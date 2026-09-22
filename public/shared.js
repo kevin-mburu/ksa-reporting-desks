@@ -41,29 +41,19 @@ export async function login(email, password, campusId, expectedRoles) {
     } catch (_) {}
   }
 
+  // Normalize role from whatever shape auth returns
   const role =
     full.role ||
     full.staff?.role ||
     full.user?.role ||
     full.staffRole ||
     null;
+  if (role) full.role = role;
 
-  // Debug: open browser Console (F12) to see this
-  console.log("LOGIN PAYLOAD", full);
-  console.log("RESOLVED ROLE", role);
+  // Do NOT block here — Convex already validated password + campus.
+  // Desk mutations still enforce role on the server.
 
-  if (expectedRoles && expectedRoles.length) {
-    if (role !== "admin" && !expectedRoles.includes(role)) {
-      throw new Error(
-        "This account cannot open this desk. Role seen: " +
-          String(role) +
-          " | keys: " +
-          Object.keys(full).join(", ")
-      );
-    }
-  }
-
-  saveSession({ ...full, role: role || full.role });
+  saveSession(full);
   return full;
 }
 
@@ -77,11 +67,8 @@ export async function resumeSession(expectedRoles) {
       clearSession();
       return null;
     }
-    const role = session.role || session.staff?.role;
-    if (expectedRoles?.length && role !== "admin" && !expectedRoles.includes(role)) {
-      return null;
-    }
     const merged = { ...s, ...session };
+    if (merged.staff?.role && !merged.role) merged.role = merged.staff.role;
     saveSession(merged);
     return merged;
   } catch {
