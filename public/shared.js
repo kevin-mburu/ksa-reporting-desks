@@ -30,16 +30,28 @@ export async function login(email, password, campusId, expectedRoles) {
   const session = await client.mutation("auth:login", {
     email: email.trim().toLowerCase(),
     password,
-    pageCampusId: campusId || undefined, // was campusId — must match Convex
+    pageCampusId: campusId || undefined,
   });
+
+  // Login may only return token — load full staff (role, campus)
+  let full = session;
+  if (session?.token && !(session.role || session.staff?.role)) {
+    try {
+      const me = await client.query("auth:me", { token: session.token });
+      if (me) full = { ...session, ...me };
+    } catch (_) {
+      /* keep session */
+    }
+  }
+
   if (expectedRoles && expectedRoles.length) {
-    const role = session.role || session.staff?.role;
+    const role = full.role || full.staff?.role;
     if (role !== "admin" && !expectedRoles.includes(role)) {
       throw new Error("This account cannot open this desk. Use the correct role or Admin.");
     }
   }
-  saveSession(session);
-  return session;
+  saveSession(full);
+  return full;
 }
 
 export async function resumeSession(expectedRoles) {
