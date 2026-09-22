@@ -1,118 +1,100 @@
 import { ConvexHttpClient } from "https://esm.sh/convex@1.17.0/browser";
 
-/** No trailing slash */
-export const CONVEX_URL = "https://tame-wolf-369.convex.cloud";
+export const CONVEX_URL = "https://resolute-rat-113.convex.cloud";
 
-export const client = new ConvexHttpClient(CONVEX_URL);
-export const DEFAULT_FEE = 60500;
+const SESSION_KEY = "ksa_desk_session";
 
-const TOKEN_KEY = "ksa_desk_token";
-const USER_KEY = "ksa_desk_user";
-
-export function saveSession(data) {
-  localStorage.setItem(TOKEN_KEY, data.token);
-  localStorage.setItem(
-    USER_KEY,
-    JSON.stringify({
-      name: data.name,
-      email: data.email,
-      role: data.role,
-      campusId: data.campusId,
-      expiresAt: data.expiresAt,
-    })
-  );
+export function getClient() {
+  return new ConvexHttpClient(CONVEX_URL);
 }
 
-export function clearSession() {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(USER_KEY);
+export function saveSession(session) {
+  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
 }
 
-export function getToken() {
-  return localStorage.getItem(TOKEN_KEY) || "";
-}
-
-export function getUser() {
+export function loadSession() {
   try {
-    return JSON.parse(localStorage.getItem(USER_KEY) || "null");
+    const raw = localStorage.getItem(SESSION_KEY);
+    return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
   }
 }
 
-export async function login(email, password, pageCampusId) {
-  const res = await client.mutation("auth:login", {
-    email,
+export function clearSession() {
+  localStorage.removeItem(SESSION_KEY);
+}
+
+export async function login(email, password, campusId, expectedRoles) {
+  const client = getClient();
+  const session = await client.mutation("auth:login", {
+    email: email.trim().toLowerCase(),
     password,
-    pageCampusId: pageCampusId || undefined,
+    pageCampusId: campusId || undefined, // was campusId — must match Convex
   });
-  if (res.ok) saveSession(res);
-  return res;
-}
-
-export async function logout() {
-  const token = getToken();
-  if (token) {
-    try {
-      await client.mutation("auth:logout", { token });
-    } catch (_) {}
+  if (expectedRoles && expectedRoles.length) {
+    const role = session.role || session.staff?.role;
+    if (role !== "admin" && !expectedRoles.includes(role)) {
+      throw new Error("This account cannot open this desk. Use the correct role or Admin.");
+    }
   }
-  clearSession();
+  saveSession(session);
+  return session;
 }
 
-export function fmtKes(n) {
-  return "KES " + Number(n || 0).toLocaleString("en-KE");
-}
-
-export function fmtWhen(iso) {
-  if (!iso) return "—";
+export async function resumeSession(expectedRoles) {
+  const s = loadSession();
+  if (!s?.token) return null;
   try {
-    return new Date(iso).toLocaleString("en-KE", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
+    const client = getClient();
+    const session = await client.query("auth:me", { token: s.token });
+    if (!session) {
+      clearSession();
+      return null;
+    }
+    const role = session.role || session.staff?.role;
+    if (expectedRoles?.length && role !== "admin" && !expectedRoles.includes(role)) {
+      return null;
+    }
+    const merged = { ...s, ...session };
+    saveSession(merged);
+    return merged;
   } catch {
-    return iso;
+    return s;
   }
 }
 
-export const CAMPUS_OPTIONS = [
-  ["nyeri", "Nyeri"],
-  ["thika", "Thika"],
-  ["nakuru", "Nakuru"],
-  ["ainabkoi", "Ainabkoi"],
-  ["ugenya", "Ugenya"],
-  ["seme", "Seme"],
-];
-
-export function fillCampusSelect(sel) {
-  sel.innerHTML =
-    '<option value="">Select campus…</option>' +
-    CAMPUS_OPTIONS.map(([id, name]) => `<option value="${id}">${name}</option>`).join("");
+export function requireRole(session, roles) {
+  const role = session?.role || session?.staff?.role;
+  if (!role) return false;
+  if (role === "admin") return true;
+  return roles.includes(role);
 }
 
-export function toast(msg, err) {
-  let t = document.getElementById("toast");
-  if (!t) {
-    t = document.createElement("div");
-    t.id = "toast";
-    document.body.appendChild(t);
+export function campusOf(session) {
+  return session?.campusId || session?.staff?.campusId || "";
+}
+
+export function toast(msg, isError = false) {
+  let el = document.getElementById("toast");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "toast";
+    document.body.appendChild(el);
   }
-  t.textContent = msg;
-  t.className = "show" + (err ? " err" : "");
-  setTimeout(() => (t.className = ""), 3500);
+  el.textContent = msg;
+  el.className = "show" + (isError ? " error" : "");
+  clearTimeout(el._t);
+  el._t = setTimeout(() => {
+    el.className = "";
+  }, 4000);
 }
 
-/** Live clock into #live-time and #live-date */
-export function startClock() {
+export function startClock(timeId = "live-time", dateId = "live-date") {
   const tick = () => {
     const n = new Date();
-    const t = document.getElementById("live-time");
-    const d = document.getElementById("live-date");
+    const t = document.getElementById(timeId);
+    const d = document.getElementById(dateId);
     if (t)
       t.textContent = n.toLocaleTimeString("en-KE", {
         hour: "2-digit",
@@ -131,20 +113,17 @@ export function startClock() {
   setInterval(tick, 1000);
 }
 
-
-/**
- * If session exists and role is allowed, return user; else null.
- * Admin is allowed on every desk.
- */
-export function sessionAllows(roles) {
-  const u = getUser();
-  const token = getToken();
-  if (!u || !token) return null;
-  if (u.expiresAt && Date.now() > u.expiresAt) {
-    clearSession();
-    return null;
-  }
-  if (u.role === "admin") return u;
-  if (roles.includes(u.role)) return u;
-  return null;
+export function fmt(n) {
+  return Number(n || 0).toLocaleString("en-KE");
 }
+
+export const CAMPUSES = [
+  { id: "nakuru", code: "NKR", name: "Nakuru" },
+  { id: "nyeri", code: "NYR", name: "Nyeri" },
+  { id: "thika", code: "THK", name: "Thika" },
+  { id: "ainabkoi", code: "AIN", name: "Ainabkoi" },
+  { id: "ugenya", code: "UGN", name: "Ugenya" },
+  { id: "seme", code: "SME", name: "Seme" },
+];
+
+export const TOTAL_FEE = 60500;
