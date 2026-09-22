@@ -30,7 +30,7 @@ export async function login(email, password, campusId, expectedRoles) {
   const session = await client.mutation("auth:login", {
     email: email.trim().toLowerCase(),
     password,
-    campusId: campusId || undefined,
+    pageCampusId: campusId || undefined, // was campusId — must match Convex
   });
   if (expectedRoles && expectedRoles.length) {
     const role = session.role || session.staff?.role;
