@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>KSA IT / Bio Desk</title>
+<link rel="stylesheet" href="desk.css"/>
+</head>
+<body>
+<div id="loginGate">
+  <div class="lg-card">
+    <h2>IT / Bio Desk</h2>
+    <div class="lg-sub">Load from Finance · capture / edit bio-data</div>
+    <form id="loginForm">
+      <label>Campus</label><select id="pageCampus" required></select>
+      <label>Email</label><input type="email" id="loginEmail" required/>
+      <label>Password</label><input type="password" id="loginPassword" required/>
+      <button class="primary" type="submit">Sign in</button>
+      <div class="err" id="loginError"></div>
+    </form>
+  </div>
+</div>
+<div id="appRoot" style="display:none">
+  <header>
+    <div><h1>IT / Bio Desk</h1><div class="meta" id="headerMeta">—</div></div>
+    <div class="hclock"><span class="htime" id="live-time">—</span><span id="live-date">—</span></div>
+    <button class="btn btn-outline" style="color:#fff;border-color:rgba(255,255,255,.3)" id="btnLogout">Sign out</button>
+  </header>
+  <nav class="desks">
+    <a href="index.html">Home</a><a href="finance.html">Finance</a>
+    <a class="on" href="it.html">IT / Bio</a><a href="photo.html">Photo</a><a href="principal.html">Principal</a>
+    <a href="admin.html">Admin</a>
+  </nav>
+  <main>
+    <div class="stats">
+      <div class="stat"><div class="l">On register</div><div class="v" id="stCount">0</div></div>
+      <div class="stat"><div class="l">Bio done</div><div class="v" id="stBio">0</div></div>
+      <div class="stat"><div class="l">Pending bio</div><div class="v" id="stPending">0</div></div>
+    </div>
+    <div class="two-col">
+      <div class="card">
+        <h2>Capture / edit bio-data</h2>
+        <div class="adm-zone">
+          <label>Programme filter</label>
+          <select id="programme">
+            <option value="">Any</option>
+            <option value="HP">HP</option><option value="DGA">DGA</option><option value="DSA">DSA</option>
+            <option value="DEA">DEA</option><option value="CGA">CGA</option><option value="CSA">CSA</option><option value="CEA">CEA</option>
+          </select>
+          <label>Sequence number only</label>
+          <input id="seqNo" inputmode="numeric" placeholder="e.g. 3"/>
+          <div id="admFullWrap" style="display:none"><span class="adm-full" id="admFull">—</span></div>
+          <div class="check" id="validBox"></div>
+          <div id="matchPick" style="display:none"><label>Select ADM</label><select id="matchSelect"></select></div>
+        </div>
+        <div id="financePanel" class="adm-zone" style="display:none">
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;margin-bottom:6px">From Finance</div>
+          <div style="font-size:13px;line-height:1.7" id="financePanelBody">—</div>
+        </div>
+        <div class="grid">
+          <div><label>Student name</label><input id="studentName"/></div>
+          <div><label>Phone</label><input id="phone"/></div>
+          <div><label>ID number</label><input id="idNumber"/></div>
+          <div><label>Email</label><input id="email" type="email"/></div>
+          <div><label>Age</label><input id="age"/></div>
+          <div><label>Gender</label>
+            <select id="gender"><option value="">—</option><option value="M">Male</option><option value="F">Female</option></select>
+          </div>
+          <div><label>Guardian</label><input id="guardian"/></div>
+          <div><label>Guardian phone</label><input id="guardianPhone"/></div>
+        </div>
+        <p style="font-size:12px;color:var(--muted)" id="timeHints"></p>
+        <button class="btn btn-gold" id="btnSave" type="button">Save bio-data</button>
+      </div>
+      <div class="card">
+        <h2>Waiting / recent</h2>
+        <div class="recent" id="recentList"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Bio register</h2>
+      <div class="toolbar">
+        <div class="search-wrap"><input id="searchInput" placeholder="Search…"/></div>
+        <button class="btn btn-outline btn-sm" id="btnExport" type="button">Export CSV</button>
+      </div>
+      <div style="overflow-x:auto"><table>
+        <thead><tr><th>Ground ADM</th><th>Name</th><th>Phone</th><th>ID</th><th>Bio</th><th>Bio time</th><th></th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table></div>
+    </div>
+  </main>
+</div>
+<script type="module">
+import { client, login, logout, getToken, getUser, fmtWhen, fmtKes, CONVEX_URL, fillCampusSelect, toast, startClock } from "./shared.js";
+const $ = (id) => document.getElementById(id);
+let pageCampus = "", selectedAdm = "", rowsCache = [], timer = null;
+fillCampusSelect($("pageCampus"));
+startClock();
+
+function showApp() {
+  const u = getUser();
+  if (!u || !getToken()) return;
+  pageCampus = u.role === "admin" ? ($("pageCampus").value || u.campusId || "") : (u.campusId || $("pageCampus").value);
+  $("loginGate").style.display = "none"; $("appRoot").style.display = "";
+  $("headerMeta").textContent = `${u.name} · ${u.role} · ${pageCampus}`;
+  refresh();
+}
+$("loginForm").onsubmit = async (e) => {
+  e.preventDefault(); $("loginError").textContent = "";
+  const campus = $("pageCampus").value;
+  if (!campus) { $("loginError").textContent = "Select campus."; return; }
+  const res = await login($("loginEmail").value, $("loginPassword").value, campus);
+  if (!res.ok) { $("loginError").textContent = res.error; return; }
+  if (res.role !== "admin" && res.role !== "it") { $("loginError").textContent = "IT or admin required."; await logout(); return; }
+  pageCampus = res.role === "admin" ? campus : (res.campusId || campus);
+  showApp();
+};
+$("btnLogout").onclick = async () => { await logout(); location.reload(); };
+$("seqNo").oninput = $("programme").onchange = () => { clearTimeout(timer); timer = setTimeout(runLookup, 350); };
+$("matchSelect").onchange = () => { const v = $("matchSelect").value; if (v) applyMatch(JSON.parse(v)); };
+
+async function runLookup() {
+  const seq = $("seqNo").value.trim();
+  $("matchPick").style.display = "none"; selectedAdm = ""; $("admFullWrap").style.display = "none";
+  if (!seq) { $("validBox").className = "check"; return; }
+  try {
+    const args = { campusId: pageCampus, seq };
+    if ($("programme").value) args.programme = $("programme").value;
+    let matches = (await client.query("issued:lookupBySeq", args))?.matches || [];
+    if (!matches.length) matches = (await client.query("issued:lookupBySeq", { campusId: pageCampus, seq }))?.matches || [];
+    if (!matches.length) {
+      $("validBox").className = "check show bad";
+      $("validBox").textContent = "No letter match. Student must be assigned in Finance first.";
+      return;
+    }
+    if (matches.length === 1) return applyMatch(matches[0]);
+    $("matchPick").style.display = "block";
+    $("matchSelect").innerHTML = matches.map(m => `<option value='${JSON.stringify(m).replace(/'/g,"&#39;")}'>${m.admNo} — ${m.studentName}</option>`).join("");
+    applyMatch(matches[0]);
+  } catch (e) {
+    $("validBox").className = "check show bad";
+    $("validBox").textContent = e.message || String(e);
+  }
+}
+
+async function applyMatch(m) {
+  selectedAdm = m.admNo;
+  $("admFull").textContent = m.admNo;
+  $("admFullWrap").style.display = "block";
+  const st = await client.query("students:getByAdmNo", { admNo: m.admNo });
+  if (!st) {
+    $("validBox").className = "check show bad";
+    $("validBox").textContent = "Not in Finance yet — Finance must assign admission first.";
+    $("financePanel").style.display = "none";
+    $("studentName").value = m.studentName || "";
+    return;
+  }
+  if (st.campusId !== pageCampus && getUser()?.role !== "admin") {
+    $("validBox").className = "check show bad";
+    $("validBox").textContent = "Wrong campus: " + st.campusId;
+    return;
+  }
+  $("validBox").className = "check show ok";
+  $("validBox").textContent = st.bioCaptured ? "✓ From Finance — bio editable" : "✓ From Finance — enter bio";
+  $("financePanel").style.display = "block";
+  $("financePanelBody").innerHTML =
+    "<div><strong>Online letter:</strong> " + (st.letterAdmNo || st.admNo) + "</div>" +
+    "<div><strong>Campus / ground:</strong> " + (st.groundAdmNo || st.admNo) + "</div>" +
+    "<div><strong>Payment:</strong> " + (st.payMethod||"—") + " · " + fmtKes(st.amountPaid) + " · bal " + fmtKes(st.balance) + "</div>" +
+    "<div><strong>Finance time:</strong> " + fmtWhen(st.financeAt) + "</div>";
+  $("studentName").value = st.studentName || m.studentName || "";
+  $("phone").value = st.phone || "";
+  $("idNumber").value = st.idNumber || "";
+  $("email").value = st.email || "";
+  $("age").value = st.age || "";
+  $("guardian").value = st.guardian || "";
+  $("guardianPhone").value = st.guardianPhone || "";
+  $("gender").value = st.gender || "";
+  if (st.programme) $("programme").value = st.programme;
+  $("timeHints").textContent = "Finance: " + fmtWhen(st.financeAt) + " · Bio: " + fmtWhen(st.bioAt) + " · Photo: " + fmtWhen(st.photoAt);
+}
+
+$("btnSave").onclick = async () => {
+  if (!selectedAdm) return toast("Look up sequence first", true);
+  try {
+    const res = await client.mutation("students:saveBio", {
+      token: getToken(), admNo: selectedAdm, campusId: pageCampus,
+      studentName: $("studentName").value.trim(),
+      programme: $("programme").value || undefined,
+      phone: $("phone").value, idNumber: $("idNumber").value, email: $("email").value,
+      age: $("age").value, guardian: $("guardian").value, guardianPhone: $("guardianPhone").value,
+      gender: $("gender").value,
+    });
+    if (!res.ok) return toast(res.error || "Failed", true);
+    toast("Bio saved");
+    refresh();
+  } catch (e) { toast(e.message || String(e), true); }
+};
+
+$("searchInput").oninput = () => renderTable();
+
+function renderTable() {
+  const q = ($("searchInput").value||"").toLowerCase();
+  let list = rowsCache;
+  if (q) list = list.filter(s => (s.studentName||"").toLowerCase().includes(q) || (s.admNo||"").toLowerCase().includes(q) || (s.phone||"").includes(q));
+  $("tbody").innerHTML = list.map(s => `<tr>
+    <td><span class="badge">${s.groundAdmNo||s.admNo}</span></td>
+    <td><strong>${s.studentName}</strong></td>
+    <td>${s.phone||"—"}</td><td>${s.idNumber||"—"}</td>
+    <td>${s.bioCaptured?"Yes":"No"}</td>
+    <td style="font-size:11px">${fmtWhen(s.bioAt)}</td>
+    <td><button class="btn btn-gold btn-sm" data-load="${s.admNo}">Open</button></td>
+  </tr>`).join("") || "<tr><td colspan='7'>No records</td></tr>";
+  $("tbody").querySelectorAll("[data-load]").forEach(b => {
+    b.onclick = async () => {
+      $("seqNo").value = "";
+      selectedAdm = b.getAttribute("data-load");
+      const st = rowsCache.find(x => x.admNo === selectedAdm);
+      if (st) await applyMatch({ admNo: st.admNo, studentName: st.studentName, programme: st.programme });
+    };
+  });
+  const pending = rowsCache.filter(s => !s.bioCaptured);
+  $("recentList").innerHTML = (pending.length ? pending : rowsCache).slice(0,15).map(s => `
+    <div class="ri"><div class="ri-top"><div class="ri-name">${s.studentName}</div>
+    <span class="badge">${s.groundAdmNo||s.admNo}</span></div>
+    <div style="font-size:11px">${s.bioCaptured?"Bio done":"Waiting bio"} · ${fmtWhen(s.financeAt)}</div></div>`).join("") || "<p style='color:var(--muted)'>None</p>";
+}
+
+$("btnExport").onclick = () => {
+  if (!rowsCache.length) return toast("No rows", true);
+  const headers = ["groundAdmNo","letterAdmNo","studentName","phone","idNumber","email","age","gender","guardian","guardianPhone","bioAt","financeAt"];
+  const lines = [headers.join(",")].concat(rowsCache.map(s => headers.map(h => '"'+String(s[h]??"").replace(/"/g,'""')+'"').join(",")));
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob(["\uFEFF"+lines.join("\r\n")],{type:"text/csv"}));
+  a.download = "KSA_IT_Bio_"+pageCampus+".csv"; a.click();
+};
+
+async function refresh() {
+  rowsCache = await client.query("students:listByCampus", { token: getToken(), campusId: pageCampus }) || [];
+  const t = await client.query("students:campusTotals", { token: getToken(), campusId: pageCampus });
+  if (t) { $("stCount").textContent = t.count; $("stBio").textContent = t.bio; }
+  $("stPending").textContent = rowsCache.filter(s => !s.bioCaptured).length;
+  renderTable();
+}
+
+// Resume session when switching desks (same browser) if role is allowed
+(function boot() {
+  const u = getUser();
+  const token = getToken();
+  if (!token || !u) return;
+  if (u.role !== "admin" && !['it'].includes(u.role)) {
+    // Wrong role for this desk — stay on login; optional message
+    const err = document.getElementById("loginError");
+    if (err) err.textContent = "Signed in as " + u.role + ". This desk needs IT (or admin). Sign out first or use another account.";
+    return;
+  }
+  // Pre-select campus from account
+  const sel = document.getElementById("pageCampus");
+  if (sel && u.campusId) sel.value = u.campusId;
+  showApp();
+})();
+
+</script>
+</body>
+</html>
