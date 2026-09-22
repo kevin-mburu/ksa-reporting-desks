@@ -1,176 +1,185 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>KSA Admin / Export</title>
-<link rel="stylesheet" href="desk.css"/>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>KSA Admin · Admissions 2026</title>
+<link rel="stylesheet" href="styles.css"/>
 </head>
 <body>
 <div id="loginGate">
   <div class="lg-card">
-    <h2>Admin / Export</h2>
-    <div class="lg-sub">All campuses · issued ADMs · staff · CSV</div>
+    <div class="lg-logo">KSA</div>
+    <h2>Admin / HQ</h2>
+    <div class="lg-sub">All campuses · Staff · Letter import</div>
     <form id="loginForm">
-      <label>Email (admin)</label><input type="email" id="loginEmail" required/>
-      <label>Password</label><input type="password" id="loginPassword" required/>
-      <button class="primary" type="submit">Sign in</button>
-      <div class="err" id="loginError"></div>
+      <label>Email</label>
+      <input type="email" id="loginEmail" required/>
+      <label>Password</label>
+      <input type="password" id="loginPassword" required/>
+      <button type="submit">Sign In</button>
+      <div class="lg-err" id="loginError"></div>
     </form>
   </div>
 </div>
 <div id="appRoot" style="display:none">
-  <header>
-    <div><h1>Admin / Export Desk</h1><div class="meta" id="headerMeta">—</div></div>
+<header>
+  <div class="header-inner">
+    <div class="logo-block">
+      <div class="logo-circle">KSA</div>
+      <div class="logo-text"><h1>Kenya School of Agriculture</h1><p>Admin · All campuses</p></div>
+    </div>
+    <span class="desk-badge">ADMIN</span>
     <div class="hclock"><span class="htime" id="live-time">—</span><span id="live-date">—</span></div>
-    <button class="btn btn-outline" style="color:#fff;border-color:rgba(255,255,255,.3)" id="btnLogout">Sign out</button>
-  </header>
-  <nav class="desks">
-    <a href="index.html">Home</a><a href="finance.html">Finance</a>
-    <a href="it.html">IT / Bio</a><a href="photo.html">Photo</a><a class="on" href="admin.html">Admin</a>
-  </nav>
-  <main>
-    <div class="stats">
-      <div class="stat"><div class="l">Students</div><div class="v" id="stCount">0</div></div>
-      <div class="stat"><div class="l">Collected</div><div class="v" id="stCollected">0</div></div>
-      <div class="stat"><div class="l">Bio</div><div class="v" id="stBio">0</div></div>
-      <div class="stat"><div class="l">Photo</div><div class="v" id="stPhoto">0</div></div>
-    </div>
-    <div class="card">
-      <h2>Import issued letter ADM</h2>
-      <div class="grid">
-        <div><label>Full ADM No</label><input id="iAdm" placeholder="NKR/HP/C1/001/2026"/></div>
-        <div><label>Student name</label><input id="iName"/></div>
-        <div><label>Campus</label><select id="iCampus"></select></div>
-        <div><label>Programme</label><input id="iProg" placeholder="HP"/></div>
+    <div class="user-badge"><span id="userEmail">—</span><button type="button" id="btnLogout">Sign Out</button></div>
+  </div>
+</header>
+<main>
+  <div class="nav-mini">
+    <a href="index.html">Home</a><a href="finance.html">Finance</a><a href="it.html">IT</a>
+    <a href="photo.html">Photo</a><a href="principal.html">Principal</a><a href="admin.html">Admin</a>
+  </div>
+  <div class="stats-row" id="campusStats"></div>
+  <div class="card">
+    <div class="section-title"><h2>Create staff</h2></div>
+    <div class="form-grid">
+      <div class="field"><label>Email</label><input id="staffEmail" type="email"/></div>
+      <div class="field"><label>Password</label><input id="staffPassword" type="text"/></div>
+      <div class="field"><label>Name</label><input id="staffName"/></div>
+      <div class="field"><label>Role</label>
+        <select id="staffRole">
+          <option value="finance">finance</option>
+          <option value="it">it</option>
+          <option value="photo">photo</option>
+          <option value="principal">principal</option>
+          <option value="admin">admin</option>
+        </select>
       </div>
-      <button class="btn btn-gold" id="btnImport" type="button">Save issued ADM</button>
-    </div>
-    <div class="card">
-      <h2>Create staff</h2>
-      <div class="grid">
-        <div><label>Email</label><input id="sEmail"/></div>
-        <div><label>Password</label><input id="sPass" type="password"/></div>
-        <div><label>Name</label><input id="sName"/></div>
-        <div><label>Role</label>
-          <select id="sRole"><option value="finance">finance</option><option value="it">it</option><option value="photo">photo</option><option value="principal">principal</option><option value="admin">admin</option></select>
-        </div>
-        <div><label>Campus</label><select id="sCampus"></select></div>
+      <div class="field"><label>Campus (required except admin)</label>
+        <select id="staffCampus">
+          <option value="">—</option>
+          <option value="nakuru">nakuru</option>
+          <option value="nyeri">nyeri</option>
+          <option value="thika">thika</option>
+          <option value="ainabkoi">ainabkoi</option>
+          <option value="ugenya">ugenya</option>
+          <option value="seme">seme</option>
+        </select>
       </div>
-      <button class="btn btn-gold" id="btnStaff" type="button">Create staff</button>
     </div>
-    <div class="card">
-      <h2>All students (with desk times)</h2>
-      <button class="btn btn-outline" id="btnCsv" type="button">Download CSV</button>
-      <div style="overflow-x:auto;margin-top:12px"><table>
-        <thead><tr>
-          <th>Campus</th><th>Letter ADM</th><th>Ground ADM</th><th>Name</th><th>Paid</th><th>Mode</th>
-          <th>Finance at</th><th>Bio at</th><th>Photo at</th>
-        </tr></thead>
-        <tbody id="tbody"></tbody>
-      </table></div>
+    <button type="button" class="btn btn-primary" id="btnCreateStaff">Create staff</button>
+  </div>
+  <div class="card">
+    <div class="section-title"><h2>Import issued letters</h2><span class="pill">JSON</span></div>
+    <p style="font-size:13px;color:var(--slate);margin-bottom:10px">Paste rows from Supabase export: admNo, studentName, campusId, programme.</p>
+    <div class="field">
+      <label>JSON array of rows</label>
+      <textarea id="importJson" rows="8" placeholder='[{"admNo":"NKR/HP/C1/001/2026","studentName":"JANE DOE","campusId":"nakuru","programme":"HP"}]'></textarea>
     </div>
-  </main>
+    <button type="button" class="btn btn-gold" id="btnImport">Import to issuedLetters</button>
+  </div>
+  <div class="card">
+    <div class="section-title"><h2>All students</h2></div>
+    <div class="toolbar">
+      <div class="search-wrap"><span class="ico">🔍</span><input id="searchInput" placeholder="Search…"/></div>
+      <button type="button" class="btn btn-gold btn-sm" id="btnExportAll">Export all CSV</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Campus</th><th>Letter</th><th>Ground</th><th>Name</th><th>Paid</th><th>Phone</th><th>Photo</th></tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
 </div>
+<div id="toast"></div>
 <script type="module">
-import { client, login, logout, getToken, getUser, fmtKes, fmtWhen, CONVEX_URL, fillCampusSelect, toast, startClock } from "./shared.js";
-const $ = (id) => document.getElementById(id);
-fillCampusSelect($("iCampus"));
-fillCampusSelect($("sCampus"));
-startClock();
-let rowsCache = [];
-
-function showApp() {
-  const u = getUser();
-  if (!u || !getToken() || u.role !== "admin") return;
-  $("loginGate").style.display = "none"; $("appRoot").style.display = "";
-  $("headerMeta").textContent = u.name + " · admin";
+import { login, resumeSession, clearSession, getClient, toast, startClock, fmt, TOTAL_FEE } from "./shared.js";
+let session = null, list = [];
+function showApp(s) {
+  session = s;
+  loginGate.style.display = "none";
+  appRoot.style.display = "";
+  userEmail.textContent = s.email || "—";
+  startClock();
   refresh();
 }
-$("loginForm").onsubmit = async (e) => {
-  e.preventDefault(); $("loginError").textContent = "";
-  const res = await login($("loginEmail").value, $("loginPassword").value, undefined);
-  if (!res.ok) { $("loginError").textContent = res.error; return; }
-  if (res.role !== "admin") { $("loginError").textContent = "Admin only."; await logout(); return; }
-  showApp();
+loginForm.onsubmit = async (e) => {
+  e.preventDefault();
+  try { showApp(await login(loginEmail.value, loginPassword.value, undefined, ["admin"])); }
+  catch (ex) { loginError.textContent = ex.message || String(ex); }
 };
-$("btnLogout").onclick = async () => { await logout(); location.reload(); };
+btnLogout.onclick = () => { clearSession(); location.reload(); };
 
-$("btnImport").onclick = async () => {
+btnCreateStaff.onclick = async () => {
   try {
-    await client.mutation("issued:upsert", {
-      admNo: $("iAdm").value.trim(),
-      studentName: $("iName").value.trim(),
-      campusId: $("iCampus").value,
-      programme: $("iProg").value.trim().toUpperCase(),
+    await getClient().mutation("auth:createStaff", {
+      token: session.token,
+      email: staffEmail.value.trim().toLowerCase(),
+      password: staffPassword.value,
+      name: staffName.value.trim(),
+      role: staffRole.value,
+      campusId: staffCampus.value || undefined,
     });
-    toast("Issued ADM saved");
-  } catch (e) { toast(e.message || String(e), true); }
-};
-
-$("btnStaff").onclick = async () => {
-  try {
-    const res = await client.mutation("auth:createStaff", {
-      token: getToken(),
-      email: $("sEmail").value.trim(),
-      password: $("sPass").value,
-      name: $("sName").value.trim(),
-      role: $("sRole").value,
-      campusId: $("sRole").value === "admin" ? undefined : $("sCampus").value,
-    });
-    if (!res.ok) return toast(res.error || "Failed", true);
     toast("Staff created");
-  } catch (e) { toast(e.message || String(e), true); }
+    staffEmail.value = staffPassword.value = staffName.value = "";
+  } catch (ex) { toast(ex.message || String(ex), true); }
 };
 
-$("btnCsv").onclick = () => {
-  if (!rowsCache.length) return toast("No rows", true);
-  const headers = [
-    "campusId","letterAdmNo","groundAdmNo","admNo","studentName","programme","payMethod","amountPaid","balance","fee",
-    "bioCaptured","photoSerial","phone","idNumber","financeAt","bioAt","photoAt"
-  ];
-  const lines = [headers.join(",")].concat(rowsCache.map(s => headers.map(h => {
-    const v = s[h] ?? "";
-    return '"' + String(v).replace(/"/g,'""') + '"';
-  }).join(",")));
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/csv" }));
-  a.download = "ksa-reporting-export.csv";
-  a.click();
+btnImport.onclick = async () => {
+  try {
+    let rows = JSON.parse(importJson.value.trim());
+    if (!Array.isArray(rows)) rows = rows.rows || [];
+    const res = await getClient().mutation("issued:bulkImport", { token: session.token, rows });
+    toast(`Import done: ${JSON.stringify(res)}`);
+  } catch (ex) { toast(ex.message || String(ex), true); }
 };
 
 async function refresh() {
   try {
-    const t = await client.query("students:campusTotals", { token: getToken() });
-    if (t) {
-      $("stCount").textContent = t.count;
-      $("stCollected").textContent = fmtKes(t.collected);
-      $("stBio").textContent = t.bio;
-      $("stPhoto").textContent = t.photo;
-    }
-    rowsCache = await client.query("students:listByCampus", { token: getToken() }) || [];
-    $("tbody").innerHTML = rowsCache.map(s => `<tr>
-      <td>${s.campusId}</td>
-      <td style="font-size:11px">${s.letterAdmNo || s.admNo}</td>
-      <td><span class="badge">${s.groundAdmNo || s.admNo}</span></td>
-      <td>${s.studentName}</td>
-      <td>${fmtKes(s.amountPaid)}</td>
-      <td>${s.payMethod || "—"}</td>
-      <td style="font-size:11px;white-space:nowrap">${fmtWhen(s.financeAt)}</td>
-      <td style="font-size:11px;white-space:nowrap">${fmtWhen(s.bioAt)}</td>
-      <td style="font-size:11px;white-space:nowrap">${fmtWhen(s.photoAt)}</td>
-    </tr>`).join("") || "<tr><td colspan='9'>No data</td></tr>";
-  } catch (e) { console.error(e); }
-}
-
-(function boot() {
-  const u = getUser();
-  if (getToken() && u?.role === "admin") showApp();
-  else if (getToken() && u && u.role !== "admin") {
-    const err = document.getElementById("loginError");
-    if (err) err.textContent = "Signed in as " + u.role + ". Admin desk needs an admin account. Sign out first.";
+    list = (await getClient().query("students:listAll", { token: session.token })) || [];
+  } catch {
+    try {
+      list = (await getClient().query("students:listByCampus", { token: session.token, campusId: "nakuru" })) || [];
+    } catch (ex) { toast(ex.message || String(ex), true); list = []; }
   }
-})();
-
+  const by = {};
+  list.forEach(s => {
+    const c = s.campusId || "unknown";
+    if (!by[c]) by[c] = { n: 0, paid: 0 };
+    by[c].n++;
+    by[c].paid += s.amountPaid || 0;
+  });
+  campusStats.innerHTML = Object.keys(by).sort().map(c =>
+    `<div class="stat-card"><div class="sl">${c}</div><div class="sv">${by[c].n}</div><div style="font-size:12px;color:var(--green)">KES ${fmt(by[c].paid)}</div></div>`
+  ).join("") || `<div class="stat-card"><div class="sl">Students</div><div class="sv">0</div></div>`;
+  render();
+}
+function render() {
+  const q = (searchInput.value||"").toLowerCase();
+  const rows = q ? list.filter(s => (s.studentName||"").toLowerCase().includes(q) || (s.admNo||"").toLowerCase().includes(q)) : list;
+  tableBody.innerHTML = rows.length ? rows.map(s => `<tr>
+    <td>${s.campusId||"—"}</td>
+    <td><span class="adm-b">${s.letterAdmNo||s.admNo||"—"}</span></td>
+    <td><span class="adm-b">${s.groundAdmNo||s.admNo||"—"}</span></td>
+    <td><strong>${s.studentName||"—"}</strong></td>
+    <td>KES ${fmt(s.amountPaid||0)}</td>
+    <td>${s.phone||"—"}</td>
+    <td>${s.photoSerial||"—"}</td>
+  </tr>`).join("") : `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">No students yet</td></tr>`;
+}
+searchInput.oninput = render;
+btnExportAll.onclick = () => {
+  const headers = ["Campus","Letter ADM","Ground ADM","Name","Programme","Paid","Balance","Phone","Photo","Finance","Bio","Photo time"];
+  const rows = list.map(s => [s.campusId,s.letterAdmNo||s.admNo,s.groundAdmNo||s.admNo,s.studentName,s.programme,s.amountPaid,s.balance,s.phone,s.photoSerial,s.financeAt,s.bioAt,s.photoAt].map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(","));
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob(["\uFEFF"+[headers.join(","),...rows].join("\r\n")],{type:"text/csv"}));
+  a.download = "KSA_Admin_All.csv"; a.click();
+};
+(async () => { const s = await resumeSession(["admin"]); if (s) showApp(s); })();
 </script>
 </body>
 </html>
