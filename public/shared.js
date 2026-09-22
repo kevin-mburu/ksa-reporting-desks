@@ -33,24 +33,37 @@ export async function login(email, password, campusId, expectedRoles) {
     pageCampusId: campusId || undefined,
   });
 
-  // Login may only return token — load full staff (role, campus)
-  let full = session;
-  if (session?.token && !(session.role || session.staff?.role)) {
+  let full = session || {};
+  if (full.token) {
     try {
-      const me = await client.query("auth:me", { token: session.token });
-      if (me) full = { ...session, ...me };
-    } catch (_) {
-      /* keep session */
+      const me = await client.query("auth:me", { token: full.token });
+      if (me) full = { ...full, ...me };
+    } catch (_) {}
+  }
+
+  const role =
+    full.role ||
+    full.staff?.role ||
+    full.user?.role ||
+    full.staffRole ||
+    null;
+
+  // Debug: open browser Console (F12) to see this
+  console.log("LOGIN PAYLOAD", full);
+  console.log("RESOLVED ROLE", role);
+
+  if (expectedRoles && expectedRoles.length) {
+    if (role !== "admin" && !expectedRoles.includes(role)) {
+      throw new Error(
+        "This account cannot open this desk. Role seen: " +
+          String(role) +
+          " | keys: " +
+          Object.keys(full).join(", ")
+      );
     }
   }
 
-  if (expectedRoles && expectedRoles.length) {
-    const role = full.role || full.staff?.role;
-    if (role !== "admin" && !expectedRoles.includes(role)) {
-      throw new Error("This account cannot open this desk. Use the correct role or Admin.");
-    }
-  }
-  saveSession(full);
+  saveSession({ ...full, role: role || full.role });
   return full;
 }
 
