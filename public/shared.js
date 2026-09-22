@@ -1,7 +1,6 @@
 import { ConvexHttpClient } from "https://esm.sh/convex@1.17.0/browser";
 
 export const CONVEX_URL = "https://resolute-rat-113.convex.cloud";
-
 const SESSION_KEY = "ksa_desk_session";
 
 export function getClient() {
@@ -25,7 +24,7 @@ export function clearSession() {
   localStorage.removeItem(SESSION_KEY);
 }
 
-export async function login(email, password, campusId, expectedRoles) {
+export async function login(email, password, campusId) {
   const client = getClient();
   const session = await client.mutation("auth:login", {
     email: email.trim().toLowerCase(),
@@ -41,23 +40,16 @@ export async function login(email, password, campusId, expectedRoles) {
     } catch (_) {}
   }
 
-  // Normalize role from whatever shape auth returns
   const role =
-    full.role ||
-    full.staff?.role ||
-    full.user?.role ||
-    full.staffRole ||
-    null;
+    full.role || full.staff?.role || full.user?.role || full.staffRole || null;
   if (role) full.role = role;
 
-  // Do NOT block here — Convex already validated password + campus.
-  // Desk mutations still enforce role on the server.
-
+  // No client-side role block — server already checked password + campus
   saveSession(full);
   return full;
 }
 
-export async function resumeSession(expectedRoles) {
+export async function resumeSession() {
   const s = loadSession();
   if (!s?.token) return null;
   try {
