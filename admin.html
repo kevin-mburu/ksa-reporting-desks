@@ -97,7 +97,7 @@
 </div>
 <div id="toast"></div>
 <script type="module">
-import { login, resumeSession, clearSession, getClient, toast, startClock, fmt, TOTAL_FEE } from "./shared.js";
+import { login, resumeSession, clearSession, getClient, toast, startClock, fmt, TOTAL_FEE } from "./shared.v2.js";
 let session = null, list = [];
 function showApp(s) {
   session = s;
@@ -109,7 +109,7 @@ function showApp(s) {
 }
 loginForm.onsubmit = async (e) => {
   e.preventDefault();
-  try { showApp(await login(loginEmail.value, loginPassword.value, undefined, ["admin"])); }
+  try { showApp(await login(loginEmail.value, loginPassword.value, undefined)); }
   catch (ex) { loginError.textContent = ex.message || String(ex); }
 };
 btnLogout.onclick = () => { clearSession(); location.reload(); };
@@ -179,7 +179,7 @@ btnExportAll.onclick = () => {
   a.href = URL.createObjectURL(new Blob(["\uFEFF"+[headers.join(","),...rows].join("\r\n")],{type:"text/csv"}));
   a.download = "KSA_Admin_All.csv"; a.click();
 };
-(async () => { const s = await resumeSession(["admin"]); if (s) showApp(s); })();
+(async () => { const s = await resumeSession(); if (s) showApp(s); })();
 </script>
 </body>
 </html>

@@ -85,7 +85,7 @@
 </div>
 <div id="toast"></div>
 <script type="module">
-import { login, resumeSession, clearSession, getClient, toast, startClock, campusOf } from "./shared.js";
+import { login, resumeSession, clearSession, getClient, toast, startClock, campusOf } from "./shared.v2.js";
 let session = null, current = null, list = [];
 function showApp(s) {
   session = s;
@@ -98,7 +98,7 @@ function showApp(s) {
 }
 loginForm.onsubmit = async (e) => {
   e.preventDefault();
-  try { showApp(await login(loginEmail.value, loginPassword.value, loginCampus.value, ["photo", "admin"])); }
+  try { showApp(await login(loginEmail.value, loginPassword.value, loginCampus.value)); }
   catch (ex) { loginError.textContent = ex.message || String(ex); }
 };
 btnLogout.onclick = () => { clearSession(); location.reload(); };
@@ -111,7 +111,7 @@ async function loadFromIT() {
   if (!seq || !session) return;
   try {
     const res = await getClient().query("students:getBySeqForCampus", {
-      token: session.token, campusId: campusOf(session), sequence: seq,
+      token: session.token, campusId: campusOf(session), seq: seq,
     });
     if (!res) {
       validBox.className = "valid-box show bad";
@@ -195,7 +195,7 @@ btnExport.onclick = () => {
   a.href = URL.createObjectURL(new Blob(["\uFEFF"+[headers.join(","),...rows].join("\r\n")],{type:"text/csv"}));
   a.download = "KSA_Photo_"+campusOf(session)+".csv"; a.click();
 };
-(async () => { const s = await resumeSession(["photo","admin"]); if (s) showApp(s); })();
+(async () => { const s = await resumeSession(); if (s) showApp(s); })();
 </script>
 </body>
 </html>

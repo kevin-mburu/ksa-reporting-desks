@@ -154,18 +154,24 @@
 
 <script type="module">
 import {
-  login, resumeSession, clearSession, getClient, loadSession, saveSession,
+  login, resumeSession, clearSession, getClient, saveSession,
   toast, startClock, fmt, TOTAL_FEE, campusOf
-} from "./shared.js";
+} from "./shared.v2.js";
 
 const FEE = TOTAL_FEE;
 let session = null;
 let students = [];
 let lookup = null;
-let nextGround = "";
 
 function showApp(s) {
   session = s;
+  if (!campusOf(session)) {
+    const c = document.getElementById("loginCampus")?.value;
+    if (c) {
+      session.campusId = c;
+      saveSession(session);
+    }
+  }
   document.getElementById("loginGate").style.display = "none";
   document.getElementById("appRoot").style.display = "";
   document.getElementById("userEmail").textContent = s.email || s.staff?.email || "—";
@@ -182,8 +188,7 @@ document.getElementById("loginForm").onsubmit = async (e) => {
     const s = await login(
       document.getElementById("loginEmail").value,
       document.getElementById("loginPassword").value,
-      document.getElementById("loginCampus").value,
-      ["finance", "admin"]
+      document.getElementById("loginCampus").value
     );
     showApp(s);
   } catch (ex) {
@@ -223,7 +228,6 @@ async function doLookup() {
   const seq = document.getElementById("seqInput").value.trim();
   const box = document.getElementById("validBox");
   lookup = null;
-  nextGround = "";
   document.getElementById("letterAdm").value = "";
   document.getElementById("studentName").value = "";
   document.getElementById("programme").value = "";
@@ -232,34 +236,56 @@ async function doLookup() {
     box.className = "valid-box";
     return;
   }
+  const campusId = campusOf(session);
+  if (!campusId) {
+    box.className = "valid-box show bad";
+    box.textContent = "No campus on session — sign out and sign in again with campus selected.";
+    return;
+  }
   try {
     const client = getClient();
     const token = session.token;
-    const res = await client.query("issued:lookupBySeq", {
-      token,
-      campusId: campusOf(session),
-      sequence: seq,
-    });
-    if (!res || res.error || !res.admNo) {
+
+    // Convex validator expects `seq` (not sequence)
+    let res;
+    try {
+      res = await client.query("issued:lookupBySeq", {
+        token,
+        campusId,
+        seq,
+      });
+    } catch (e1) {
+      // Fallback if function has no token arg
+      try {
+        res = await client.query("issued:lookupBySeq", {
+          campusId,
+          seq,
+        });
+      } catch (e2) {
+        throw e1;
+      }
+    }
+
+    if (!res || res.error || !(res.admNo || res.letterAdmNo)) {
       box.className = "valid-box show bad";
       box.textContent = res?.error || "Not found for this campus sequence.";
       return;
     }
     lookup = res;
-    document.getElementById("letterAdm").value = res.admNo;
+    document.getElementById("letterAdm").value = res.admNo || res.letterAdmNo || "";
     document.getElementById("studentName").value = res.studentName || "";
     document.getElementById("programme").value = res.programme || "";
     box.className = "valid-box show ok";
-    box.textContent = "Valid — " + (res.studentName || res.admNo);
+    box.textContent = "Valid — " + (res.studentName || res.admNo || "");
 
     try {
       const next = await client.query("students:nextGroundAdm", {
         token,
-        campusId: campusOf(session),
+        campusId,
         programme: res.programme || "HP",
       });
-      nextGround = next?.admNo || next || "";
-      document.getElementById("groundAdmPreview").value = nextGround;
+      document.getElementById("groundAdmPreview").value =
+        (typeof next === "string" ? next : next?.admNo || next?.groundAdmNo) || "(assigned on save)";
     } catch {
       document.getElementById("groundAdmPreview").value = "(assigned on save)";
     }
@@ -270,7 +296,7 @@ async function doLookup() {
 }
 
 document.getElementById("btnAssign").onclick = async () => {
-  if (!lookup?.admNo) {
+  if (!lookup?.admNo && !lookup?.letterAdmNo) {
     toast("Look up a valid letter sequence first.", true);
     return;
   }
@@ -280,7 +306,7 @@ document.getElementById("btnAssign").onclick = async () => {
     const client = getClient();
     await client.mutation("students:saveFinance", {
       token: session.token,
-      letterAdmNo: lookup.admNo,
+      letterAdmNo: lookup.admNo || lookup.letterAdmNo,
       studentName: lookup.studentName,
       campusId: campusOf(session),
       programme: lookup.programme || "HP",
@@ -291,7 +317,7 @@ document.getElementById("btnAssign").onclick = async () => {
       mpesaRef: document.getElementById("mpesaRef").value.trim(),
       assignNewGround: true,
     });
-    toast("Assigned — " + (lookup.studentName || lookup.admNo));
+    toast("Assigned — " + (lookup.studentName || lookup.admNo || ""));
     clearForm();
     refreshList();
   } catch (ex) {
@@ -320,10 +346,11 @@ async function refreshList() {
   if (!session) return;
   try {
     const client = getClient();
-    students = (await client.query("students:listByCampus", {
-      token: session.token,
-      campusId: campusOf(session),
-    })) || [];
+    students =
+      (await client.query("students:listByCampus", {
+        token: session.token,
+        campusId: campusOf(session),
+      })) || [];
   } catch (ex) {
     toast(ex.message || String(ex), true);
     students = [];
@@ -344,7 +371,10 @@ function renderTable() {
     );
   }
   const collected = students.reduce((a, s) => a + (s.amountPaid || 0), 0);
-  const balance = students.reduce((a, s) => a + (s.balance ?? Math.max(0, (s.fee || FEE) - (s.amountPaid || 0))), 0);
+  const balance = students.reduce(
+    (a, s) => a + (s.balance ?? Math.max(0, (s.fee || FEE) - (s.amountPaid || 0))),
+    0
+  );
   const paidN = students.filter((s) => (s.amountPaid || 0) >= (s.fee || FEE)).length;
   document.getElementById("stTotal").textContent = students.length;
   document.getElementById("stCollected").textContent = "KES " + fmt(collected);
@@ -396,7 +426,11 @@ function renderTable() {
 
   tbody.querySelectorAll("[data-edit]").forEach((btn) => {
     btn.onclick = () => {
-      const s = students.find((x) => String(x._id) === btn.getAttribute("data-edit") || x.admNo === btn.getAttribute("data-edit"));
+      const s = students.find(
+        (x) =>
+          String(x._id) === btn.getAttribute("data-edit") ||
+          x.admNo === btn.getAttribute("data-edit")
+      );
       if (!s) return;
       document.getElementById("seqInput").value = "";
       document.getElementById("letterAdm").value = s.letterAdmNo || s.admNo || "";
@@ -409,13 +443,14 @@ function renderTable() {
       document.getElementById("mpesaRef").value = s.mpesaRef || "";
       lookup = {
         admNo: s.letterAdmNo || s.admNo,
+        letterAdmNo: s.letterAdmNo || s.admNo,
         studentName: s.studentName,
         programme: s.programme,
         existingId: s._id,
       };
       const box = document.getElementById("validBox");
       box.className = "valid-box show warn";
-      box.textContent = "Editing existing record — save with Assign to update payment (ground ADM kept).";
+      box.textContent = "Editing existing record — save with Assign to update payment.";
       togglePay();
       updatePay();
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -430,7 +465,19 @@ document.getElementById("btnExport").onclick = () => {
     toast("No records", true);
     return;
   }
-  const headers = ["Letter ADM","Ground ADM","Name","Programme","Paid","Fee","Balance","Pay method","KCB ref","M-Pesa ref","Finance time"];
+  const headers = [
+    "Letter ADM",
+    "Ground ADM",
+    "Name",
+    "Programme",
+    "Paid",
+    "Fee",
+    "Balance",
+    "Pay method",
+    "KCB ref",
+    "M-Pesa ref",
+    "Finance time",
+  ];
   const rows = students.map((s) =>
     [
       s.letterAdmNo || s.admNo,
@@ -448,16 +495,19 @@ document.getElementById("btnExport").onclick = () => {
       .map((v) => '"' + String(v ?? "").replace(/"/g, '""') + '"')
       .join(",")
   );
-  const blob = new Blob(["\uFEFF" + [headers.join(","), ...rows].join("\r\n")], { type: "text/csv;charset=utf-8" });
+  const blob = new Blob(["\uFEFF" + [headers.join(","), ...rows].join("\r\n")], {
+    type: "text/csv;charset=utf-8",
+  });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = "KSA_Finance_" + campusOf(session) + "_" + new Date().toISOString().slice(0, 10) + ".csv";
+  a.download =
+    "KSA_Finance_" + campusOf(session) + "_" + new Date().toISOString().slice(0, 10) + ".csv";
   a.click();
   toast("CSV downloaded");
 };
 
 (async () => {
-  const s = await resumeSession(["finance", "admin"]);
+  const s = await resumeSession();
   if (s) showApp(s);
   updatePay();
 })();
