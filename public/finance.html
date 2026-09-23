@@ -1,496 +1,516 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>KSA Finance Desk</title>
-<link rel="stylesheet" href="desk.css"/>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>KSA Finance Desk · Admissions 2026</title>
+<link rel="stylesheet" href="styles.css"/>
 </head>
 <body>
 <div id="loginGate">
   <div class="lg-card">
+    <div class="lg-logo">KSA</div>
     <h2>Finance Desk</h2>
-    <div class="lg-sub">Kenya School of Agriculture · Assign admission · Reporting 2026</div>
+    <div class="lg-sub">Kenya School of Agriculture · Admissions 2026</div>
     <form id="loginForm">
-      <label>Campus (this desk)</label><select id="pageCampus" required></select>
-      <label>Email</label><input type="email" id="loginEmail" required autocomplete="username"/>
-      <label>Password</label><input type="password" id="loginPassword" required autocomplete="current-password"/>
-      <button class="primary" type="submit">Sign in</button>
-      <div class="err" id="loginError"></div>
+      <label>Campus</label>
+      <select id="loginCampus" required>
+        <option value="">Select campus</option>
+        <option value="nakuru">Nakuru</option>
+        <option value="nyeri">Nyeri</option>
+        <option value="thika">Thika</option>
+        <option value="ainabkoi">Ainabkoi</option>
+        <option value="ugenya">Ugenya</option>
+        <option value="seme">Seme</option>
+      </select>
+      <label>Email</label>
+      <input type="email" id="loginEmail" required autocomplete="username"/>
+      <label>Password</label>
+      <input type="password" id="loginPassword" required autocomplete="current-password"/>
+      <button type="submit">Sign In</button>
+      <div class="lg-err" id="loginError"></div>
     </form>
   </div>
 </div>
 
 <div id="appRoot" style="display:none">
-  <header>
-    <div><h1>Finance Desk</h1><div class="meta" id="headerMeta">—</div></div>
+<header>
+  <div class="header-inner">
+    <div class="logo-block">
+      <div class="logo-circle">KSA</div>
+      <div class="logo-text">
+        <h1>Kenya School of Agriculture</h1>
+        <p>Admissions 2026 · Finance</p>
+      </div>
+    </div>
+    <span class="desk-badge" id="campusBadge">—</span>
     <div class="hclock"><span class="htime" id="live-time">—</span><span id="live-date">—</span></div>
-    <button class="btn btn-outline" style="color:#fff;border-color:rgba(255,255,255,.3)" id="btnLogout">Sign out</button>
-  </header>
-  <nav class="desks">
-    <a href="index.html">Home</a><a class="on" href="finance.html">Finance</a>
-    <a href="it.html">IT / Bio</a><a href="photo.html">Photo</a><a href="principal.html">Principal</a>
-    <a href="admin.html">Admin</a>
-  </nav>
-  <main>
-    <div class="stats">
-      <div class="stat"><div class="l">Students</div><div class="v" id="stCount">0</div></div>
-      <div class="stat"><div class="l">Collected</div><div class="v" id="stCollected">KES 0</div></div>
-      <div class="stat"><div class="l">Outstanding</div><div class="v" id="stBal">KES 0</div></div>
-      <div class="stat"><div class="l">Fully paid</div><div class="v" id="stPaid">0</div></div>
-    </div>
-
-    <div class="two-col">
-      <div class="card">
-        <h2>Assign admission number</h2>
-        <div class="adm-zone">
-          <label>Programme</label>
-          <select id="programme">
-            <option value="HP">HP — Horticultural Production (CBET)</option>
-            <option value="DGA">DGA — Diploma General Agriculture</option>
-            <option value="DSA">DSA — Diploma Sustainable Agriculture</option>
-            <option value="DEA">DEA — Diploma Entrepreneurial Agriculture</option>
-            <option value="CGA">CGA — Certificate General Agriculture</option>
-            <option value="CSA">CSA — Certificate Sustainable Agriculture</option>
-            <option value="CEA">CEA — Certificate Entrepreneurial Agriculture</option>
-          </select>
-          <label>Sequence number only (from letter)</label>
-          <input id="seqNo" inputmode="numeric" placeholder="e.g. 3 or 003" autocomplete="off"/>
-          <div id="admFullWrap" style="display:none;margin-top:8px"><span class="adm-full" id="admFull">—</span></div>
-          <div class="check" id="validBox"></div>
-          <div id="matchPick" style="display:none;margin-top:8px">
-            <label>Select matching letter ADM</label><select id="matchSelect"></select>
-          </div>
-        </div>
-
-        <div id="admTrail" class="adm-zone" style="display:none">
-          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;margin-bottom:6px">Online letter → Sequential campus number</div>
-          <div style="font-size:13px;line-height:1.6">
-            <div><strong>Online (letter):</strong> <span id="trailLetter">—</span></div>
-            <div style="margin-top:8px"><strong>Next campus / ground ADM (sequential):</strong>
-              <div class="adm-full" id="groundPreview" style="margin-top:6px">—</div>
-            </div>
-            <p style="font-size:11px;color:var(--muted);margin-top:8px">New assigns get the next number for this campus + programme (e.g. NKR/HP/C1/015/2026). Existing records keep their ground number when you update payment.</p>
-          </div>
-        </div>
-
-        <div class="grid">
-          <div><label>Student name</label><input id="studentName"/></div>
-          <div>
-            <label>Mode of payment</label>
-            <select id="payMethod">
-              <option value="NONE">Not paid yet</option>
-              <option value="CASH">Cash</option>
-              <option value="CHEQUE">Cheque</option>
-              <option value="MPESA">M-Pesa</option>
-              <option value="KCB">KCB Bank</option>
-              <option value="SPLIT">Split (more than one mode)</option>
-            </select>
-          </div>
-        </div>
-        <div id="refCash" class="ref-fields"><label>Cash receipt / note</label><input id="cashRef"/></div>
-        <div id="refCheque" class="ref-fields"><label>Cheque number</label><input id="chequeRef"/></div>
-        <div id="refMpesa" class="ref-fields"><label>M-Pesa reference</label><input id="mpesaRef"/></div>
-        <div id="refKcb" class="ref-fields"><label>KCB reference</label><input id="kcbRef"/></div>
-
-        <div class="pay-summary">
-          <div class="pay-box pb-total"><div class="pb-l">Total fee</div><div class="pb-v" id="psFee">KES 60,500</div></div>
-          <div class="pay-box pb-paid"><div class="pb-l">Amount paid</div><div class="pb-v">
-            <input id="amountPaid" type="number" min="0" value="0" style="margin:0;border:none;background:transparent;width:100%;font-size:18px;font-family:inherit"/>
-          </div></div>
-          <div class="pay-box pb-bal" id="psBalBox"><div class="pb-l">Balance</div><div class="pb-v" id="psBal">KES 60,500</div></div>
-        </div>
-        <p style="font-size:12px;color:var(--muted)" id="timeHints"></p>
-        <div style="display:flex;gap:10px;flex-wrap:wrap">
-          <button class="btn btn-gold" id="btnAssign" type="button">Assign admission number</button>
-          <button class="btn btn-outline" id="btnClear" type="button">Clear form</button>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2>Recent assignments</h2>
-        <div class="recent" id="recentList"><div class="empty-state" style="padding:24px"><p>No students yet</p></div></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>Campus register</h2>
-      <p style="font-size:12px;color:var(--muted);margin-bottom:10px">Edit mistakes from the list. Delete frees the number for another student.</p>
-      <div class="toolbar">
-        <div class="search-wrap"><input id="searchInput" placeholder="Search name, ADM, ref…"/></div>
-        <button class="btn btn-outline btn-sm" id="btnExportCsv" type="button">Export CSV</button>
-      </div>
-      <div style="overflow-x:auto"><table>
-        <thead><tr>
-          <th>#</th><th>Ground ADM</th><th>Letter ADM</th><th>Name</th><th>Prog</th>
-          <th>Mode</th><th>Paid</th><th>Bal</th><th>Finance time</th><th>Actions</th>
-        </tr></thead>
-        <tbody id="tbody"></tbody>
-      </table></div>
-    </div>
-  </main>
-</div>
-
-<!-- Edit modal -->
-<div class="modal-overlay" id="editModal">
-  <div class="modal">
-    <h3>Edit finance record</h3>
-    <div class="body">
-      <input type="hidden" id="eAdmKey"/>
-      <label>Ground ADM</label><input id="eGround"/>
-      <label>Student name</label><input id="eName"/>
-      <label>Programme</label><input id="eProg"/>
-      <label>Pay mode</label>
-      <select id="eMethod">
-        <option value="NONE">Not paid yet</option>
-        <option value="CASH">Cash</option>
-        <option value="CHEQUE">Cheque</option>
-        <option value="MPESA">M-Pesa</option>
-        <option value="KCB">KCB</option>
-        <option value="SPLIT">Split</option>
-      </select>
-      <label>Amount paid</label><input id="eAmount" type="number" min="0"/>
-      <label>M-Pesa ref</label><input id="eMpesa"/>
-      <label>KCB ref</label><input id="eKcb"/>
-      <label>Cash note</label><input id="eCash"/>
-      <label>Cheque no.</label><input id="eCheque"/>
-    </div>
-    <div class="actions">
-      <button class="btn btn-gold" id="eSave" type="button">Update</button>
-      <button class="btn btn-outline" id="eClose" type="button">Cancel</button>
+    <div class="user-badge">
+      <span id="userEmail">—</span>
+      <button type="button" id="btnLogout">Sign Out</button>
     </div>
   </div>
+</header>
+<main>
+  <div class="nav-mini">
+    <a href="index.html">Home</a>
+    <a href="finance.html">Finance</a>
+    <a href="it.html">IT</a>
+    <a href="photo.html">Photo</a>
+    <a href="principal.html">Principal</a>
+    <a href="admin.html">Admin</a>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card"><div class="sl">Students</div><div class="sv" id="stTotal">0</div></div>
+    <div class="stat-card"><div class="sl">Collected</div><div class="sv green" id="stCollected">KES 0</div></div>
+    <div class="stat-card"><div class="sl">Outstanding</div><div class="sv red" id="stBalance">KES 0</div></div>
+    <div class="stat-card"><div class="sl">Fully paid</div><div class="sv gold" id="stPaid">0</div></div>
+  </div>
+
+  <div class="card">
+    <div class="section-title"><h2>Assign admission number</h2><span class="pill">Finance</span></div>
+    <p style="font-size:13px;color:var(--slate);margin-bottom:14px">Type the <strong>sequence only</strong> from the letter (e.g. 3 or 003). Campus comes from your login. Fee is fixed at <strong>KES 60,500</strong>.</p>
+    <div class="form-grid">
+      <div class="field">
+        <label>Sequence number</label>
+        <input id="seqInput" placeholder="e.g. 3 or 003" inputmode="numeric"/>
+      </div>
+      <div class="field">
+        <label>Full letter ADM (auto)</label>
+        <input id="letterAdm" readonly placeholder="—"/>
+      </div>
+      <div class="full">
+        <div class="valid-box" id="validBox"></div>
+      </div>
+      <div class="field">
+        <label>Student name</label>
+        <input id="studentName" readonly/>
+      </div>
+      <div class="field">
+        <label>Programme</label>
+        <input id="programme" readonly/>
+      </div>
+      <div class="field full">
+        <label>Next campus / ground ADM</label>
+        <input id="groundAdmPreview" readonly style="font-family:'DM Serif Display',serif;font-size:18px;color:var(--gold)"/>
+      </div>
+      <div class="field">
+        <label>Payment mode</label>
+        <select id="payMethod">
+          <option value="NONE">Not paid yet</option>
+          <option value="CASH">Cash</option>
+          <option value="CHEQUE">Cheque</option>
+          <option value="MPESA">M-Pesa</option>
+          <option value="KCB">KCB</option>
+          <option value="SPLIT">Split (M-Pesa + KCB)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Amount paid (KES)</label>
+        <input id="amountPaid" type="number" min="0" step="1" value="0"/>
+      </div>
+      <div class="field" id="kcbWrap" style="display:none">
+        <label>KCB / Cheque ref</label>
+        <input id="kcbRef"/>
+      </div>
+      <div class="field" id="mpesaWrap" style="display:none">
+        <label>M-Pesa ref</label>
+        <input id="mpesaRef"/>
+      </div>
+    </div>
+    <div class="pay-row">
+      <div class="pay-box pb-total"><div class="pb-l">Total fee</div><div class="pb-v" id="psFee">KES 60,500</div></div>
+      <div class="pay-box pb-paid"><div class="pb-l">Paid</div><div class="pb-v" id="psPaid">KES 0</div></div>
+      <div class="pay-box pb-bal" id="psBalBox"><div class="pb-l">Balance</div><div class="pb-v" id="psBal">KES 60,500</div></div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
+      <button type="button" class="btn btn-primary" id="btnAssign">Assign admission number</button>
+      <button type="button" class="btn btn-outline" id="btnClear">Clear</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-title"><h2>Campus register</h2><span class="pill" id="regCount">0</span></div>
+    <div class="toolbar">
+      <div class="search-wrap"><span class="ico">🔍</span><input id="searchInput" placeholder="Search name or ADM…"/></div>
+      <button type="button" class="btn btn-gold btn-sm" id="btnExport">Export CSV</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>Letter ADM</th><th>Ground ADM</th><th>Name</th><th>Prog</th>
+            <th>Paid</th><th>Balance</th><th>Mode</th><th>Finance time</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
 </div>
+<div id="toast"></div>
 
 <script type="module">
-import { client, login, logout, getToken, getUser, fmtKes, fmtWhen, CONVEX_URL, DEFAULT_FEE, fillCampusSelect, toast, startClock } from "./shared.js";
-const $ = (id) => document.getElementById(id);
-let pageCampus = "", selectedAdm = "", rowsCache = [], lookupTimer = null;
-fillCampusSelect($("pageCampus"));
-startClock();
+import {
+  login, resumeSession, clearSession, getClient, saveSession,
+  toast, startClock, fmt, TOTAL_FEE, campusOf
+} from "./shared.v2.js";
 
-function toggleRefs() {
-  const m = $("payMethod").value;
-  $("refCash").className = "ref-fields" + (m==="CASH"||m==="SPLIT" ? " show" : "");
-  $("refCheque").className = "ref-fields" + (m==="CHEQUE"||m==="SPLIT" ? " show" : "");
-  $("refMpesa").className = "ref-fields" + (m==="MPESA"||m==="SPLIT" ? " show" : "");
-  $("refKcb").className = "ref-fields" + (m==="KCB"||m==="SPLIT" ? " show" : "");
-}
-$("payMethod").onchange = toggleRefs;
+const FEE = TOTAL_FEE;
+let session = null;
+let students = [];
+let lookup = null;
 
-async function refreshNextGround() {
-  if (!pageCampus) return;
-  try {
-    const n = await client.query("students:nextGroundSeq", {
-      campusId: pageCampus,
-      programme: $("programme").value,
-    });
-    if (n && $("groundPreview")) $("groundPreview").textContent = n.preview + "  (next seq " + n.nextSeq + ")";
-  } catch (_) {}
-}
-
-function updateBal() {
-  const paid = parseFloat($("amountPaid").value) || 0;
-  const bal = Math.max(0, DEFAULT_FEE - paid);
-  $("psFee").textContent = fmtKes(DEFAULT_FEE);
-  $("psBal").textContent = bal > 0 ? fmtKes(bal) : "✓ KES 0";
-  $("psBalBox").className = "pay-box " + (bal > 0 ? "pb-bal" : "pb-ok");
-}
-$("amountPaid").oninput = updateBal;
-updateBal();
-
-function showApp() {
-  const u = getUser();
-  if (!u || !getToken()) return;
-  pageCampus = u.role === "admin" ? ($("pageCampus").value || u.campusId || "") : (u.campusId || $("pageCampus").value);
-  $("loginGate").style.display = "none";
-  $("appRoot").style.display = "";
-  $("headerMeta").textContent = `${u.name} · ${u.role} · ${pageCampus}`;
-  refreshNextGround();
-  refresh();
+function showApp(s) {
+  session = s;
+  if (!campusOf(session)) {
+    const c = document.getElementById("loginCampus")?.value;
+    if (c) {
+      session.campusId = c;
+      saveSession(session);
+    }
+  }
+  document.getElementById("loginGate").style.display = "none";
+  document.getElementById("appRoot").style.display = "";
+  document.getElementById("userEmail").textContent = s.email || s.staff?.email || "—";
+  document.getElementById("campusBadge").textContent = (campusOf(s) || "—").toUpperCase();
+  startClock();
+  refreshList();
 }
 
-$("loginForm").onsubmit = async (e) => {
+document.getElementById("loginForm").onsubmit = async (e) => {
   e.preventDefault();
-  $("loginError").textContent = "";
-  const campus = $("pageCampus").value;
-  if (!campus) { $("loginError").textContent = "Select campus."; return; }
-  if (CONVEX_URL.includes("YOUR_DEPLOYMENT")) { $("loginError").textContent = "Set CONVEX_URL in shared.js"; return; }
-  const res = await login($("loginEmail").value, $("loginPassword").value, campus);
-  if (!res.ok) { $("loginError").textContent = res.error || "Login failed"; return; }
-  if (res.role !== "admin" && res.role !== "finance") {
-    $("loginError").textContent = "Finance or admin required."; await logout(); return;
+  const err = document.getElementById("loginError");
+  err.textContent = "";
+  try {
+    const s = await login(
+      document.getElementById("loginEmail").value,
+      document.getElementById("loginPassword").value,
+      document.getElementById("loginCampus").value
+    );
+    showApp(s);
+  } catch (ex) {
+    err.textContent = ex.message || String(ex);
   }
-  pageCampus = res.role === "admin" ? campus : (res.campusId || campus);
-  showApp();
-};
-$("btnLogout").onclick = async () => { await logout(); location.reload(); };
-
-$("seqNo").oninput = () => {
-  clearTimeout(lookupTimer);
-  lookupTimer = setTimeout(runLookup, 350);
-};
-$("programme").onchange = () => {
-  refreshNextGround();
-  clearTimeout(lookupTimer);
-  lookupTimer = setTimeout(runLookup, 350);
-};
-$("matchSelect").onchange = () => {
-  const v = $("matchSelect").value;
-  if (v) applyMatch(JSON.parse(v));
 };
 
-async function runLookup() {
-  const seq = $("seqNo").value.trim();
-  $("matchPick").style.display = "none";
-  selectedAdm = "";
-  $("admFullWrap").style.display = "none";
-  $("admTrail").style.display = "none";
-  if (!seq) { $("validBox").className = "check"; return; }
-  try {
-    let matches = (await client.query("issued:lookupBySeq", {
-      campusId: pageCampus, seq, programme: $("programme").value,
-    }))?.matches || [];
-    if (!matches.length) {
-      matches = (await client.query("issued:lookupBySeq", { campusId: pageCampus, seq }))?.matches || [];
-    }
-    if (!matches.length) {
-      $("validBox").className = "check show bad";
-      $("validBox").textContent = "No issued letter for this number at this campus.";
-      return;
-    }
-    if (matches.length === 1) return applyMatch(matches[0]);
-    $("matchPick").style.display = "block";
-    $("matchSelect").innerHTML = matches.map(m =>
-      `<option value='${JSON.stringify(m).replace(/'/g,"&#39;")}'>${m.admNo} — ${m.studentName}</option>`).join("");
-    $("validBox").className = "check show warn";
-    $("validBox").textContent = matches.length + " matches — select one.";
-    applyMatch(matches[0]);
-  } catch (err) {
-    $("validBox").className = "check show bad";
-    $("validBox").textContent = err.message || String(err);
-  }
+document.getElementById("btnLogout").onclick = () => {
+  clearSession();
+  location.reload();
+};
+
+function togglePay() {
+  const m = document.getElementById("payMethod").value;
+  document.getElementById("kcbWrap").style.display = m === "KCB" || m === "CHEQUE" || m === "SPLIT" ? "" : "none";
+  document.getElementById("mpesaWrap").style.display = m === "MPESA" || m === "SPLIT" ? "" : "none";
+  updatePay();
+}
+document.getElementById("payMethod").onchange = togglePay;
+document.getElementById("amountPaid").oninput = updatePay;
+
+function updatePay() {
+  const paid = parseFloat(document.getElementById("amountPaid").value) || 0;
+  const bal = Math.max(0, FEE - paid);
+  document.getElementById("psPaid").textContent = "KES " + fmt(paid);
+  document.getElementById("psBal").textContent = bal > 0 ? "KES " + fmt(bal) : "✓ KES 0";
+  document.getElementById("psBalBox").className = "pay-box " + (bal > 0 ? "pb-bal" : "pb-ok");
 }
 
-async function applyMatch(m) {
-  selectedAdm = m.admNo;
-  $("admFull").textContent = m.admNo;
-  $("admFullWrap").style.display = "block";
-  $("admTrail").style.display = "block";
-  $("trailLetter").textContent = m.admNo;
-  $("studentName").value = m.studentName || "";
-  await refreshNextGround();
-  if (m.programme) $("programme").value = m.programme;
-  $("validBox").className = "check show ok";
-  $("validBox").textContent = "✓ Letter valid — " + m.studentName;
-  try {
-    const st = await client.query("students:getByAdmNo", { admNo: m.admNo });
-    if (st) {
-      $("validBox").textContent = "✓ Already on register — use list Edit, or update below";
-      $("payMethod").value = st.payMethod || "NONE";
-      $("amountPaid").value = st.amountPaid || 0;
-      $("mpesaRef").value = st.mpesaRef || "";
-      $("kcbRef").value = st.kcbRef || "";
-      $("cashRef").value = st.cashRef || "";
-      $("chequeRef").value = st.chequeRef || "";
-      $("trailLetter").textContent = st.letterAdmNo || m.admNo;
-      if ($("groundPreview")) $("groundPreview").textContent = (st.groundAdmNo || "—") + " (already assigned)";
-      $("studentName").value = st.studentName || m.studentName;
-      $("timeHints").textContent = "Finance: " + fmtWhen(st.financeAt) +
-        (st.bioAt ? " · Bio: " + fmtWhen(st.bioAt) : "") +
-        (st.photoAt ? " · Photo: " + fmtWhen(st.photoAt) : "");
-      toggleRefs(); updateBal();
-    } else {
-      $("timeHints").textContent = "New assignment — not yet on campus register.";
-    }
-  } catch (_) {}
-}
-
-$("btnClear").onclick = () => {
-  selectedAdm = "";
-  $("seqNo").value = "";
-  $("studentName").value = "";
-  $("amountPaid").value = 0;
-  $("payMethod").value = "NONE";
-  $("mpesaRef").value = $("kcbRef").value = $("cashRef").value = $("chequeRef").value = "";
-  $("admFullWrap").style.display = "none";
-  $("admTrail").style.display = "none";
-  $("validBox").className = "check";
-  $("timeHints").textContent = "";
-  toggleRefs(); updateBal();
+let seqTimer;
+document.getElementById("seqInput").oninput = () => {
+  clearTimeout(seqTimer);
+  seqTimer = setTimeout(doLookup, 350);
 };
 
-$("btnAssign").onclick = async () => {
-  if (!selectedAdm) return toast("Look up a valid letter sequence first", true);
-  const name = $("studentName").value.trim();
-  if (!name) return toast("Student name required", true);
-  try {
-    const res = await client.mutation("students:saveFinance", {
-      token: getToken(),
-      admNo: selectedAdm,
-      campusId: pageCampus,
-      programme: $("programme").value,
-      studentName: name,
-      payMethod: $("payMethod").value,
-      kcbRef: $("kcbRef").value,
-      mpesaRef: $("mpesaRef").value,
-      cashRef: $("cashRef").value,
-      chequeRef: $("chequeRef").value,
-      amountPaid: parseFloat($("amountPaid").value) || 0,
-      fee: DEFAULT_FEE,
-      letterAdmNo: $("trailLetter").textContent.trim() || selectedAdm,
-      // omit groundAdmNo on new assign → server issues sequential number
-    });
-    if (!res.ok) return toast(res.error || "Failed", true);
-    toast("Assigned ground ADM " + (res.groundAdmNo || "") + " (letter " + selectedAdm + ")");
-    refreshNextGround();
-    refresh();
-  } catch (err) { toast(err.message || String(err), true); }
-};
-
-$("searchInput").oninput = () => renderTable();
-
-function renderTable() {
-  const q = ($("searchInput").value || "").toLowerCase();
-  let list = rowsCache;
-  if (q) list = list.filter(s =>
-    (s.studentName||"").toLowerCase().includes(q) ||
-    (s.admNo||"").toLowerCase().includes(q) ||
-    (s.groundAdmNo||"").toLowerCase().includes(q) ||
-    (s.letterAdmNo||"").toLowerCase().includes(q) ||
-    (s.mpesaRef||"").toLowerCase().includes(q) ||
-    (s.kcbRef||"").toLowerCase().includes(q)
-  );
-  $("tbody").innerHTML = list.map((s, i) => `<tr>
-    <td>${i+1}</td>
-    <td><span class="badge">${s.groundAdmNo || s.admNo}</span></td>
-    <td style="font-size:11px">${s.letterAdmNo || s.admNo}</td>
-    <td><strong>${s.studentName}</strong></td>
-    <td>${s.programme}</td>
-    <td>${s.payMethod || "—"}</td>
-    <td>${fmtKes(s.amountPaid)}</td>
-    <td>${fmtKes(s.balance)}</td>
-    <td style="font-size:11px;white-space:nowrap">${fmtWhen(s.financeAt)}</td>
-    <td style="white-space:nowrap">
-      <button class="btn btn-gold btn-sm" data-edit="${s.admNo}">Edit</button>
-      <button class="btn btn-danger btn-sm" data-del="${s.admNo}">Del</button>
-    </td>
-  </tr>`).join("") || "<tr><td colspan='10'>No records</td></tr>";
-
-  $("tbody").querySelectorAll("[data-edit]").forEach(btn => {
-    btn.onclick = () => openEdit(btn.getAttribute("data-edit"));
-  });
-  $("tbody").querySelectorAll("[data-del]").forEach(btn => {
-    btn.onclick = () => delRow(btn.getAttribute("data-del"));
-  });
-
-  $("recentList").innerHTML = [...rowsCache].slice(0, 12).map(s => `
-    <div class="ri">
-      <div class="ri-top">
-        <div class="ri-name">${s.studentName}</div>
-        <span class="badge">${s.groundAdmNo || s.admNo}</span>
-      </div>
-      <div style="font-size:11px;color:var(--slate)">${s.programme} · ${s.payMethod||"—"} · ${fmtKes(s.amountPaid)} · ${fmtWhen(s.financeAt)}</div>
-    </div>`).join("") || "<p style='color:var(--muted);font-size:13px'>No assignments yet</p>";
-}
-
-function openEdit(admNo) {
-  const s = rowsCache.find(x => x.admNo === admNo);
-  if (!s) return;
-  $("eAdmKey").value = s.admNo;
-  $("eGround").value = s.groundAdmNo || s.admNo;
-  $("eName").value = s.studentName || "";
-  $("eProg").value = s.programme || "";
-  $("eMethod").value = s.payMethod || "NONE";
-  $("eAmount").value = s.amountPaid || 0;
-  $("eMpesa").value = s.mpesaRef || "";
-  $("eKcb").value = s.kcbRef || "";
-  $("eCash").value = s.cashRef || "";
-  $("eCheque").value = s.chequeRef || "";
-  $("editModal").classList.add("show");
-}
-$("eClose").onclick = () => $("editModal").classList.remove("show");
-$("eSave").onclick = async () => {
-  const admNo = $("eAdmKey").value;
-  const s = rowsCache.find(x => x.admNo === admNo);
-  if (!s) return;
-  try {
-    const res = await client.mutation("students:saveFinance", {
-      token: getToken(),
-      admNo,
-      campusId: pageCampus,
-      programme: $("eProg").value.trim() || s.programme,
-      studentName: $("eName").value.trim(),
-      payMethod: $("eMethod").value,
-      mpesaRef: $("eMpesa").value,
-      kcbRef: $("eKcb").value,
-      cashRef: $("eCash").value,
-      chequeRef: $("eCheque").value,
-      amountPaid: parseFloat($("eAmount").value) || 0,
-      fee: s.fee || DEFAULT_FEE,
-      letterAdmNo: s.letterAdmNo || admNo,
-      groundAdmNo: $("eGround").value.trim() || admNo,
-    });
-    if (!res.ok) return toast(res.error || "Update failed", true);
-    toast("Updated " + admNo);
-    $("editModal").classList.remove("show");
-    refresh();
-  } catch (e) { toast(e.message || String(e), true); }
-};
-
-async function delRow(admNo) {
-  if (!confirm("Delete register row for " + admNo + "?\nThis frees the number for another student. Cannot be undone.")) return;
-  try {
-    const res = await client.mutation("students:removeStudent", { token: getToken(), admNo });
-    if (!res.ok) return toast(res.error || "Delete failed", true);
-    toast("Deleted " + admNo);
-    refresh();
-  } catch (e) { toast(e.message || String(e), true); }
-}
-
-$("btnExportCsv").onclick = () => {
-  if (!rowsCache.length) return toast("No rows", true);
-  const headers = ["groundAdmNo","letterAdmNo","studentName","programme","payMethod","amountPaid","balance","fee","financeAt","mpesaRef","kcbRef","cashRef","chequeRef"];
-  const lines = [headers.join(",")].concat(rowsCache.map(s => headers.map(h => {
-    const v = s[h] ?? "";
-    return '"' + String(v).replace(/"/g,'""') + '"';
-  }).join(",")));
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob(["\uFEFF"+lines.join("\r\n")], {type:"text/csv"}));
-  a.download = "KSA_Finance_" + pageCampus + ".csv";
-  a.click();
-};
-
-async function refresh() {
-  try {
-    const t = await client.query("students:campusTotals", { token: getToken(), campusId: pageCampus });
-    rowsCache = await client.query("students:listByCampus", { token: getToken(), campusId: pageCampus }) || [];
-    if (t) {
-      $("stCount").textContent = t.count;
-      $("stCollected").textContent = fmtKes(t.collected);
-      $("stBal").textContent = fmtKes(t.outstanding);
-    }
-    $("stPaid").textContent = rowsCache.filter(s => (s.balance||0) <= 0 && (s.amountPaid||0) > 0).length;
-    renderTable();
-  } catch (e) { console.error(e); }
-}
-
-// Resume session when switching desks (same browser) if role is allowed
-(function boot() {
-  const u = getUser();
-  const token = getToken();
-  if (!token || !u) return;
-  if (u.role !== "admin" && !['finance'].includes(u.role)) {
-    // Wrong role for this desk — stay on login; optional message
-    const err = document.getElementById("loginError");
-    if (err) err.textContent = "Signed in as " + u.role + ". This desk needs finance (or admin). Sign out first or use another account.";
+async function doLookup() {
+  const seq = document.getElementById("seqInput").value.trim();
+  const box = document.getElementById("validBox");
+  lookup = null;
+  document.getElementById("letterAdm").value = "";
+  document.getElementById("studentName").value = "";
+  document.getElementById("programme").value = "";
+  document.getElementById("groundAdmPreview").value = "";
+  if (!seq || !session) {
+    box.className = "valid-box";
     return;
   }
-  // Pre-select campus from account
-  const sel = document.getElementById("pageCampus");
-  if (sel && u.campusId) sel.value = u.campusId;
-  showApp();
-})();
+  const campusId = campusOf(session);
+  if (!campusId) {
+    box.className = "valid-box show bad";
+    box.textContent = "No campus on session — sign out and sign in again with campus selected.";
+    return;
+  }
+  try {
+    const client = getClient();
+    const token = session.token;
 
+    // Convex validator expects `seq` (not sequence)
+    let res;
+    try {
+      res = await client.query("issued:lookupBySeq", {
+        token,
+        campusId,
+        seq,
+      });
+    } catch (e1) {
+      // Fallback if function has no token arg
+      try {
+        res = await client.query("issued:lookupBySeq", {
+          campusId,
+          seq,
+        });
+      } catch (e2) {
+        throw e1;
+      }
+    }
+
+    if (!res || res.error || !(res.admNo || res.letterAdmNo)) {
+      box.className = "valid-box show bad";
+      box.textContent = res?.error || "Not found for this campus sequence.";
+      return;
+    }
+    lookup = res;
+    document.getElementById("letterAdm").value = res.admNo || res.letterAdmNo || "";
+    document.getElementById("studentName").value = res.studentName || "";
+    document.getElementById("programme").value = res.programme || "";
+    box.className = "valid-box show ok";
+    box.textContent = "Valid — " + (res.studentName || res.admNo || "");
+
+    try {
+      const next = await client.query("students:nextGroundAdm", {
+        token,
+        campusId,
+        programme: res.programme || "HP",
+      });
+      document.getElementById("groundAdmPreview").value =
+        (typeof next === "string" ? next : next?.admNo || next?.groundAdmNo) || "(assigned on save)";
+    } catch {
+      document.getElementById("groundAdmPreview").value = "(assigned on save)";
+    }
+  } catch (ex) {
+    box.className = "valid-box show bad";
+    box.textContent = ex.message || String(ex);
+  }
+}
+
+document.getElementById("btnAssign").onclick = async () => {
+  if (!lookup?.admNo && !lookup?.letterAdmNo) {
+    toast("Look up a valid letter sequence first.", true);
+    return;
+  }
+  const paid = parseFloat(document.getElementById("amountPaid").value) || 0;
+  const payMethod = document.getElementById("payMethod").value;
+  try {
+    const client = getClient();
+    await client.mutation("students:saveFinance", {
+      token: session.token,
+      letterAdmNo: lookup.admNo || lookup.letterAdmNo,
+      studentName: lookup.studentName,
+      campusId: campusOf(session),
+      programme: lookup.programme || "HP",
+      payMethod,
+      amountPaid: paid,
+      fee: FEE,
+      kcbRef: document.getElementById("kcbRef").value.trim(),
+      mpesaRef: document.getElementById("mpesaRef").value.trim(),
+      assignNewGround: true,
+    });
+    toast("Assigned — " + (lookup.studentName || lookup.admNo || ""));
+    clearForm();
+    refreshList();
+  } catch (ex) {
+    toast(ex.message || String(ex), true);
+  }
+};
+
+function clearForm() {
+  document.getElementById("seqInput").value = "";
+  document.getElementById("letterAdm").value = "";
+  document.getElementById("studentName").value = "";
+  document.getElementById("programme").value = "";
+  document.getElementById("groundAdmPreview").value = "";
+  document.getElementById("amountPaid").value = "0";
+  document.getElementById("payMethod").value = "NONE";
+  document.getElementById("kcbRef").value = "";
+  document.getElementById("mpesaRef").value = "";
+  document.getElementById("validBox").className = "valid-box";
+  lookup = null;
+  togglePay();
+  updatePay();
+}
+document.getElementById("btnClear").onclick = clearForm;
+
+async function refreshList() {
+  if (!session) return;
+  try {
+    const client = getClient();
+    students =
+      (await client.query("students:listByCampus", {
+        token: session.token,
+        campusId: campusOf(session),
+      })) || [];
+  } catch (ex) {
+    toast(ex.message || String(ex), true);
+    students = [];
+  }
+  renderTable();
+}
+
+function renderTable() {
+  const q = (document.getElementById("searchInput").value || "").toLowerCase();
+  let list = students;
+  if (q) {
+    list = list.filter(
+      (s) =>
+        (s.studentName || "").toLowerCase().includes(q) ||
+        (s.admNo || "").toLowerCase().includes(q) ||
+        (s.letterAdmNo || "").toLowerCase().includes(q) ||
+        (s.groundAdmNo || "").toLowerCase().includes(q)
+    );
+  }
+  const collected = students.reduce((a, s) => a + (s.amountPaid || 0), 0);
+  const balance = students.reduce(
+    (a, s) => a + (s.balance ?? Math.max(0, (s.fee || FEE) - (s.amountPaid || 0))),
+    0
+  );
+  const paidN = students.filter((s) => (s.amountPaid || 0) >= (s.fee || FEE)).length;
+  document.getElementById("stTotal").textContent = students.length;
+  document.getElementById("stCollected").textContent = "KES " + fmt(collected);
+  document.getElementById("stBalance").textContent = "KES " + fmt(balance);
+  document.getElementById("stPaid").textContent = paidN;
+  document.getElementById("regCount").textContent = students.length + " students";
+
+  const tbody = document.getElementById("tableBody");
+  if (!list.length) {
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:28px">No students yet.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = list
+    .map((s, i) => {
+      const bal = s.balance ?? Math.max(0, (s.fee || FEE) - (s.amountPaid || 0));
+      return `<tr>
+        <td>${i + 1}</td>
+        <td><span class="adm-b">${s.letterAdmNo || s.admNo || "—"}</span></td>
+        <td><span class="adm-b">${s.groundAdmNo || s.admNo || "—"}</span></td>
+        <td><strong>${s.studentName || "—"}</strong></td>
+        <td>${s.programme || "—"}</td>
+        <td>KES ${fmt(s.amountPaid || 0)}</td>
+        <td>KES ${fmt(bal)}</td>
+        <td>${s.payMethod || "—"}</td>
+        <td style="font-size:11px;color:var(--slate)">${s.financeAt || s.savedAt || "—"}</td>
+        <td>
+          <button type="button" class="btn btn-gold btn-sm" data-edit="${s._id || s.admNo}">Edit</button>
+          <button type="button" class="btn btn-danger btn-sm" data-del="${s._id || s.admNo}">Del</button>
+        </td>
+      </tr>`;
+    })
+    .join("");
+
+  tbody.querySelectorAll("[data-del]").forEach((btn) => {
+    btn.onclick = async () => {
+      if (!confirm("Delete this finance record? The letter can be assigned again.")) return;
+      try {
+        await getClient().mutation("students:remove", {
+          token: session.token,
+          id: btn.getAttribute("data-del"),
+        });
+        toast("Deleted", true);
+        refreshList();
+      } catch (ex) {
+        toast(ex.message || String(ex), true);
+      }
+    };
+  });
+
+  tbody.querySelectorAll("[data-edit]").forEach((btn) => {
+    btn.onclick = () => {
+      const s = students.find(
+        (x) =>
+          String(x._id) === btn.getAttribute("data-edit") ||
+          x.admNo === btn.getAttribute("data-edit")
+      );
+      if (!s) return;
+      document.getElementById("seqInput").value = "";
+      document.getElementById("letterAdm").value = s.letterAdmNo || s.admNo || "";
+      document.getElementById("studentName").value = s.studentName || "";
+      document.getElementById("programme").value = s.programme || "";
+      document.getElementById("groundAdmPreview").value = s.groundAdmNo || s.admNo || "";
+      document.getElementById("payMethod").value = s.payMethod || "NONE";
+      document.getElementById("amountPaid").value = s.amountPaid || 0;
+      document.getElementById("kcbRef").value = s.kcbRef || "";
+      document.getElementById("mpesaRef").value = s.mpesaRef || "";
+      lookup = {
+        admNo: s.letterAdmNo || s.admNo,
+        letterAdmNo: s.letterAdmNo || s.admNo,
+        studentName: s.studentName,
+        programme: s.programme,
+        existingId: s._id,
+      };
+      const box = document.getElementById("validBox");
+      box.className = "valid-box show warn";
+      box.textContent = "Editing existing record — save with Assign to update payment.";
+      togglePay();
+      updatePay();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+  });
+}
+
+document.getElementById("searchInput").oninput = renderTable;
+
+document.getElementById("btnExport").onclick = () => {
+  if (!students.length) {
+    toast("No records", true);
+    return;
+  }
+  const headers = [
+    "Letter ADM",
+    "Ground ADM",
+    "Name",
+    "Programme",
+    "Paid",
+    "Fee",
+    "Balance",
+    "Pay method",
+    "KCB ref",
+    "M-Pesa ref",
+    "Finance time",
+  ];
+  const rows = students.map((s) =>
+    [
+      s.letterAdmNo || s.admNo,
+      s.groundAdmNo || s.admNo,
+      s.studentName,
+      s.programme,
+      s.amountPaid || 0,
+      s.fee || FEE,
+      s.balance ?? Math.max(0, (s.fee || FEE) - (s.amountPaid || 0)),
+      s.payMethod,
+      s.kcbRef || "",
+      s.mpesaRef || "",
+      s.financeAt || "",
+    ]
+      .map((v) => '"' + String(v ?? "").replace(/"/g, '""') + '"')
+      .join(",")
+  );
+  const blob = new Blob(["\uFEFF" + [headers.join(","), ...rows].join("\r\n")], {
+    type: "text/csv;charset=utf-8",
+  });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download =
+    "KSA_Finance_" + campusOf(session) + "_" + new Date().toISOString().slice(0, 10) + ".csv";
+  a.click();
+  toast("CSV downloaded");
+};
+
+(async () => {
+  const s = await resumeSession();
+  if (s) showApp(s);
+  updatePay();
+})();
 </script>
 </body>
 </html>

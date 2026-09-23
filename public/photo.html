@@ -1,249 +1,201 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>KSA Photo Desk</title>
-<link rel="stylesheet" href="desk.css"/>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>KSA Photo Desk · Admissions 2026</title>
+<link rel="stylesheet" href="styles.css"/>
 </head>
 <body>
 <div id="loginGate">
   <div class="lg-card">
+    <div class="lg-logo">KSA</div>
     <h2>Photo Desk</h2>
-    <div class="lg-sub">Load from IT · photo serial register</div>
+    <div class="lg-sub">Requires IT bio first · Admissions 2026</div>
     <form id="loginForm">
-      <label>Campus</label><select id="pageCampus" required></select>
-      <label>Email</label><input type="email" id="loginEmail" required/>
-      <label>Password</label><input type="password" id="loginPassword" required/>
-      <button class="primary" type="submit">Sign in</button>
-      <div class="err" id="loginError"></div>
+      <label>Campus</label>
+      <select id="loginCampus" required>
+        <option value="">Select campus</option>
+        <option value="nakuru">Nakuru</option>
+        <option value="nyeri">Nyeri</option>
+        <option value="thika">Thika</option>
+        <option value="ainabkoi">Ainabkoi</option>
+        <option value="ugenya">Ugenya</option>
+        <option value="seme">Seme</option>
+      </select>
+      <label>Email</label>
+      <input type="email" id="loginEmail" required/>
+      <label>Password</label>
+      <input type="password" id="loginPassword" required/>
+      <button type="submit">Sign In</button>
+      <div class="lg-err" id="loginError"></div>
     </form>
   </div>
 </div>
 <div id="appRoot" style="display:none">
-  <header>
-    <div><h1>Photo Desk</h1><div class="meta" id="headerMeta">—</div></div>
+<header>
+  <div class="header-inner">
+    <div class="logo-block">
+      <div class="logo-circle">KSA</div>
+      <div class="logo-text"><h1>Kenya School of Agriculture</h1><p>Photo Desk</p></div>
+    </div>
+    <span class="desk-badge" id="campusBadge">—</span>
     <div class="hclock"><span class="htime" id="live-time">—</span><span id="live-date">—</span></div>
-    <button class="btn btn-outline" style="color:#fff;border-color:rgba(255,255,255,.3)" id="btnLogout">Sign out</button>
-  </header>
-  <nav class="desks">
-    <a href="index.html">Home</a><a href="finance.html">Finance</a>
-    <a href="it.html">IT / Bio</a><a class="on" href="photo.html">Photo</a><a href="principal.html">Principal</a>
-    <a href="admin.html">Admin</a>
-  </nav>
-  <main>
-    <div class="stats">
-      <div class="stat"><div class="l">On register</div><div class="v" id="stCount">0</div></div>
-      <div class="stat"><div class="l">Photos</div><div class="v" id="stPhoto">0</div></div>
-      <div class="stat"><div class="l">Awaiting photo</div><div class="v" id="stWait">0</div></div>
+    <div class="user-badge"><span id="userEmail">—</span><button type="button" id="btnLogout">Sign Out</button></div>
+  </div>
+</header>
+<main>
+  <div class="nav-mini">
+    <a href="index.html">Home</a><a href="finance.html">Finance</a><a href="it.html">IT</a>
+    <a href="photo.html">Photo</a><a href="principal.html">Principal</a><a href="admin.html">Admin</a>
+  </div>
+  <div class="stats-row">
+    <div class="stat-card"><div class="sl">Photo entries</div><div class="sv" id="stPhoto">0</div></div>
+    <div class="stat-card"><div class="sl">Awaiting photo</div><div class="sv gold" id="stWait">0</div></div>
+  </div>
+  <div class="card">
+    <div class="section-title"><h2>Photo serial</h2><span class="pill">From IT</span></div>
+    <p style="font-size:13px;color:var(--slate);margin-bottom:12px">Sequence only. Student must have <strong>bio saved on IT</strong>.</p>
+    <div class="form-grid">
+      <div class="field"><label>Sequence</label><input id="seqInput" placeholder="e.g. 3"/></div>
+      <div class="field"><label>ADM</label><input id="admShow" readonly/></div>
+      <div class="full"><div class="valid-box" id="validBox"></div></div>
+      <div class="field"><label>Name</label><input id="studentName" readonly/></div>
+      <div class="field"><label>Phone / ID (from IT)</label><input id="bioSummary" readonly/></div>
+      <div class="field full"><label>Photo serial number</label><input id="photoSerial" placeholder="e.g. PH-000001"/></div>
+      <div class="field full"><label>Remarks</label><input id="remarks"/></div>
     </div>
-    <div class="two-col">
-      <div class="card">
-        <h2>Photo register / edit</h2>
-        <div class="adm-zone">
-          <label>Programme filter</label>
-          <select id="programme">
-            <option value="">Any</option>
-            <option value="HP">HP</option><option value="DGA">DGA</option><option value="DSA">DSA</option>
-            <option value="DEA">DEA</option><option value="CGA">CGA</option><option value="CSA">CSA</option><option value="CEA">CEA</option>
-          </select>
-          <label>Sequence number only</label>
-          <input id="seqNo" inputmode="numeric" placeholder="e.g. 3"/>
-          <div id="admFullWrap" style="display:none"><span class="adm-full" id="admFull">—</span></div>
-          <div class="check" id="validBox"></div>
-          <div id="matchPick" style="display:none"><label>Select ADM</label><select id="matchSelect"></select></div>
-        </div>
-        <div id="itPanel" class="adm-zone" style="display:none">
-          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;margin-bottom:6px">From IT / Finance</div>
-          <div style="font-size:13px;line-height:1.7" id="itPanelBody">—</div>
-        </div>
-        <div class="grid">
-          <div><label>Student name</label><input id="studentName" readonly/></div>
-          <div><label>Photo serial</label><input id="photoSerial" placeholder="PH-000001"/></div>
-          <div style="grid-column:1/-1"><label>Remarks</label><input id="remarks"/></div>
-        </div>
-        <p style="font-size:12px;color:var(--muted)" id="timeHints"></p>
-        <button class="btn btn-teal" id="btnSave" type="button">Save photo entry</button>
-      </div>
-      <div class="card">
-        <h2>Queue</h2>
-        <div class="recent" id="recentList"></div>
-      </div>
+    <button type="button" class="btn btn-primary" id="btnSave">Save photo entry</button>
+    <button type="button" class="btn btn-outline" id="btnClear">Clear</button>
+  </div>
+  <div class="card">
+    <div class="section-title"><h2>Photo register</h2></div>
+    <div class="toolbar">
+      <div class="search-wrap"><span class="ico">🔍</span><input id="searchInput" placeholder="Search…"/></div>
+      <button type="button" class="btn btn-gold btn-sm" id="btnExport">Export CSV</button>
     </div>
-    <div class="card">
-      <h2>Photo list</h2>
-      <div class="toolbar">
-        <div class="search-wrap"><input id="searchInput" placeholder="Search…"/></div>
-        <button class="btn btn-outline btn-sm" id="btnExport" type="button">Export CSV</button>
-      </div>
-      <div style="overflow-x:auto"><table>
-        <thead><tr><th>Ground ADM</th><th>Name</th><th>Photo serial</th><th>Photo time</th><th></th></tr></thead>
-        <tbody id="tbody"></tbody>
-      </table></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>ADM</th><th>Name</th><th>Photo serial</th><th>Remarks</th><th>Photo time</th><th></th></tr></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
     </div>
-  </main>
+  </div>
+</main>
 </div>
+<div id="toast"></div>
 <script type="module">
-import { client, login, logout, getToken, getUser, fmtWhen, CONVEX_URL, fillCampusSelect, toast, startClock } from "./shared.js";
-const $ = (id) => document.getElementById(id);
-let pageCampus = "", selectedAdm = "", rowsCache = [], timer = null;
-fillCampusSelect($("pageCampus"));
-startClock();
-
-function showApp() {
-  const u = getUser();
-  if (!u || !getToken()) return;
-  pageCampus = u.role === "admin" ? ($("pageCampus").value || u.campusId || "") : (u.campusId || $("pageCampus").value);
-  $("loginGate").style.display = "none"; $("appRoot").style.display = "";
-  $("headerMeta").textContent = `${u.name} · ${u.role} · ${pageCampus}`;
+import { login, resumeSession, clearSession, getClient, toast, startClock, campusOf } from "./shared.v2.js";
+let session = null, current = null, list = [];
+function showApp(s) {
+  session = s;
+  loginGate.style.display = "none";
+  appRoot.style.display = "";
+  userEmail.textContent = s.email || "—";
+  campusBadge.textContent = (campusOf(s) || "—").toUpperCase();
+  startClock();
   refresh();
 }
-$("loginForm").onsubmit = async (e) => {
-  e.preventDefault(); $("loginError").textContent = "";
-  const campus = $("pageCampus").value;
-  if (!campus) { $("loginError").textContent = "Select campus."; return; }
-  const res = await login($("loginEmail").value, $("loginPassword").value, campus);
-  if (!res.ok) { $("loginError").textContent = res.error; return; }
-  if (res.role !== "admin" && res.role !== "photo") { $("loginError").textContent = "Photo or admin required."; await logout(); return; }
-  pageCampus = res.role === "admin" ? campus : (res.campusId || campus);
-  showApp();
+loginForm.onsubmit = async (e) => {
+  e.preventDefault();
+  try { showApp(await login(loginEmail.value, loginPassword.value, loginCampus.value)); }
+  catch (ex) { loginError.textContent = ex.message || String(ex); }
 };
-$("btnLogout").onclick = async () => { await logout(); location.reload(); };
-$("seqNo").oninput = $("programme").onchange = () => { clearTimeout(timer); timer = setTimeout(runLookup, 350); };
-$("matchSelect").onchange = () => { const v = $("matchSelect").value; if (v) applyMatch(JSON.parse(v)); };
-
-async function runLookup() {
-  const seq = $("seqNo").value.trim();
-  $("matchPick").style.display = "none"; selectedAdm = ""; $("admFullWrap").style.display = "none";
-  if (!seq) { $("validBox").className = "check"; return; }
+btnLogout.onclick = () => { clearSession(); location.reload(); };
+let t;
+seqInput.oninput = () => { clearTimeout(t); t = setTimeout(loadFromIT, 350); };
+async function loadFromIT() {
+  const seq = seqInput.value.trim();
+  validBox.className = "valid-box";
+  current = null;
+  if (!seq || !session) return;
   try {
-    const args = { campusId: pageCampus, seq };
-    if ($("programme").value) args.programme = $("programme").value;
-    let matches = (await client.query("issued:lookupBySeq", args))?.matches || [];
-    if (!matches.length) matches = (await client.query("issued:lookupBySeq", { campusId: pageCampus, seq }))?.matches || [];
-    if (!matches.length) {
-      $("validBox").className = "check show bad";
-      $("validBox").textContent = "No match at this campus.";
+    const res = await getClient().query("students:getBySeqForCampus", {
+      token: session.token, campusId: campusOf(session), seq: seq,
+    });
+    if (!res) {
+      validBox.className = "valid-box show bad";
+      validBox.textContent = "Not found on Finance for this campus.";
       return;
     }
-    if (matches.length === 1) return applyMatch(matches[0]);
-    $("matchPick").style.display = "block";
-    $("matchSelect").innerHTML = matches.map(m => `<option value='${JSON.stringify(m).replace(/'/g,"&#39;")}'>${m.admNo} — ${m.studentName}</option>`).join("");
-    applyMatch(matches[0]);
-  } catch (e) {
-    $("validBox").className = "check show bad";
-    $("validBox").textContent = e.message || String(e);
+    if (!(res.bioCaptured || res.phone || res.idNumber)) {
+      validBox.className = "valid-box show warn";
+      validBox.textContent = "IT bio not saved yet for " + (res.studentName || "this student") + ".";
+      current = null;
+      return;
+    }
+    current = res;
+    admShow.value = res.groundAdmNo || res.admNo || "";
+    studentName.value = res.studentName || "";
+    bioSummary.value = [res.phone, res.idNumber].filter(Boolean).join(" · ") || "—";
+    photoSerial.value = res.photoSerial || "";
+    remarks.value = res.remarks || "";
+    validBox.className = "valid-box show ok";
+    validBox.textContent = "Loaded from IT — ready for photo serial.";
+  } catch (ex) {
+    validBox.className = "valid-box show bad";
+    validBox.textContent = ex.message || String(ex);
   }
 }
-
-async function applyMatch(m) {
-  selectedAdm = m.admNo;
-  $("admFull").textContent = m.admNo;
-  $("admFullWrap").style.display = "block";
-  const st = await client.query("students:getByAdmNo", { admNo: m.admNo });
-  if (!st) {
-    $("validBox").className = "check show bad";
-    $("validBox").textContent = "Not in Finance yet.";
-    $("itPanel").style.display = "none";
-    return;
-  }
-  if (!st.bioCaptured) {
-    $("validBox").className = "check show bad";
-    $("validBox").textContent = "IT has not saved bio yet — complete IT first.";
-    $("itPanel").style.display = "block";
-    $("itPanelBody").innerHTML = "<div>Send student to IT desk first.</div>" +
-      "<div><strong>Online:</strong> " + (st.letterAdmNo||st.admNo) + " → <strong>Ground:</strong> " + (st.groundAdmNo||st.admNo) + "</div>";
-    $("studentName").value = st.studentName || "";
-    return;
-  }
-  $("validBox").className = "check show ok";
-  $("validBox").textContent = "✓ From IT — save or edit photo serial";
-  $("itPanel").style.display = "block";
-  $("itPanelBody").innerHTML =
-    "<div><strong>Online letter:</strong> " + (st.letterAdmNo||st.admNo) + "</div>" +
-    "<div><strong>Campus / ground:</strong> " + (st.groundAdmNo||st.admNo) + "</div>" +
-    "<div><strong>Phone:</strong> " + (st.phone||"—") + " · <strong>ID:</strong> " + (st.idNumber||"—") + "</div>" +
-    "<div><strong>Guardian:</strong> " + (st.guardian||"—") + " · " + (st.guardianPhone||"") + "</div>" +
-    "<div><strong>Bio time:</strong> " + fmtWhen(st.bioAt) + "</div>";
-  $("studentName").value = st.studentName || m.studentName || "";
-  $("photoSerial").value = st.photoSerial || "";
-  $("remarks").value = st.remarks || "";
-  $("timeHints").textContent = "Finance: " + fmtWhen(st.financeAt) + " · Bio: " + fmtWhen(st.bioAt) + " · Photo: " + fmtWhen(st.photoAt);
-}
-
-$("btnSave").onclick = async () => {
-  if (!selectedAdm) return toast("Look up first", true);
+btnSave.onclick = async () => {
+  if (!current) { toast("Load a student with IT bio first", true); return; }
+  if (!photoSerial.value.trim()) { toast("Enter photo serial", true); return; }
   try {
-    const res = await client.mutation("students:savePhoto", {
-      token: getToken(), admNo: selectedAdm, campusId: pageCampus,
-      photoSerial: $("photoSerial").value.trim(), remarks: $("remarks").value,
+    await getClient().mutation("students:savePhoto", {
+      token: session.token,
+      id: current._id,
+      photoSerial: photoSerial.value.trim(),
+      remarks: remarks.value.trim(),
     });
-    if (!res.ok) return toast(res.error || "Failed", true);
     toast("Photo entry saved");
     refresh();
-  } catch (e) { toast(e.message || String(e), true); }
+  } catch (ex) { toast(ex.message || String(ex), true); }
 };
-
-$("searchInput").oninput = () => renderTable();
-function renderTable() {
-  const q = ($("searchInput").value||"").toLowerCase();
-  let list = rowsCache.filter(s => s.photoSerial);
-  if (q) list = list.filter(s => (s.studentName||"").toLowerCase().includes(q) || (s.admNo||"").toLowerCase().includes(q) || (s.photoSerial||"").toLowerCase().includes(q));
-  $("tbody").innerHTML = list.map(s => `<tr>
-    <td><span class="badge">${s.groundAdmNo||s.admNo}</span></td>
-    <td>${s.studentName}</td>
-    <td><span class="badge">${s.photoSerial}</span></td>
-    <td style="font-size:11px">${fmtWhen(s.photoAt)}</td>
-    <td><button class="btn btn-gold btn-sm" data-load="${s.admNo}">Open</button></td>
-  </tr>`).join("") || "<tr><td colspan='5'>No photo entries</td></tr>";
-  $("tbody").querySelectorAll("[data-load]").forEach(b => {
-    b.onclick = async () => {
-      const adm = b.getAttribute("data-load");
-      const st = rowsCache.find(x => x.admNo === adm);
-      if (st) await applyMatch({ admNo: st.admNo, studentName: st.studentName, programme: st.programme });
+btnClear.onclick = () => {
+  seqInput.value = ""; current = null; validBox.className = "valid-box";
+  admShow.value = studentName.value = bioSummary.value = photoSerial.value = remarks.value = "";
+};
+async function refresh() {
+  try {
+    list = (await getClient().query("students:listByCampus", { token: session.token, campusId: campusOf(session) })) || [];
+  } catch { list = []; }
+  const withPhoto = list.filter(s => s.photoSerial);
+  const withBio = list.filter(s => s.bioCaptured || s.phone || s.idNumber);
+  stPhoto.textContent = withPhoto.length;
+  stWait.textContent = Math.max(0, withBio.length - withPhoto.length);
+  const q = (searchInput.value || "").toLowerCase();
+  const rows = (q ? list.filter(s => (s.studentName||"").toLowerCase().includes(q) || (s.photoSerial||"").toLowerCase().includes(q)) : list)
+    .filter(s => s.photoSerial || s.bioCaptured || s.phone);
+  tableBody.innerHTML = rows.length ? rows.map((s,i) => `<tr>
+    <td>${i+1}</td><td><span class="adm-b">${s.groundAdmNo||s.admNo||"—"}</span></td>
+    <td><strong>${s.studentName||"—"}</strong></td><td>${s.photoSerial||"—"}</td>
+    <td>${s.remarks||"—"}</td><td style="font-size:11px">${s.photoAt||"—"}</td>
+    <td><button type="button" class="btn btn-gold btn-sm" data-e="${s._id}">Edit</button></td>
+  </tr>`).join("") : `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">No entries</td></tr>`;
+  tableBody.querySelectorAll("[data-e]").forEach(btn => {
+    btn.onclick = () => {
+      const s = list.find(x => String(x._id) === btn.getAttribute("data-e"));
+      if (!s) return;
+      current = s;
+      admShow.value = s.groundAdmNo || s.admNo;
+      studentName.value = s.studentName || "";
+      bioSummary.value = [s.phone, s.idNumber].filter(Boolean).join(" · ");
+      photoSerial.value = s.photoSerial || "";
+      remarks.value = s.remarks || "";
+      validBox.className = "valid-box show warn";
+      validBox.textContent = "Editing photo entry.";
     };
   });
-  const wait = rowsCache.filter(s => s.bioCaptured && !s.photoSerial);
-  $("recentList").innerHTML = wait.slice(0,15).map(s => `
-    <div class="ri"><div class="ri-top"><div class="ri-name">${s.studentName}</div>
-    <span class="badge">${s.groundAdmNo||s.admNo}</span></div>
-    <div style="font-size:11px">Awaiting photo · bio ${fmtWhen(s.bioAt)}</div></div>`).join("") || "<p style='color:var(--muted)'>No queue</p>";
 }
-
-$("btnExport").onclick = () => {
-  const list = rowsCache.filter(s => s.photoSerial);
-  if (!list.length) return toast("No rows", true);
-  const headers = ["groundAdmNo","letterAdmNo","studentName","photoSerial","remarks","photoAt","bioAt","financeAt"];
-  const lines = [headers.join(",")].concat(list.map(s => headers.map(h => '"'+String(s[h]??"").replace(/"/g,'""')+'"').join(",")));
+searchInput.oninput = refresh;
+btnExport.onclick = () => {
+  const headers = ["ADM","Name","Photo serial","Remarks","Photo time"];
+  const rows = list.filter(s => s.photoSerial).map(s => [s.groundAdmNo||s.admNo,s.studentName,s.photoSerial,s.remarks,s.photoAt].map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(","));
   const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob(["\uFEFF"+lines.join("\r\n")],{type:"text/csv"}));
-  a.download = "KSA_Photo_"+pageCampus+".csv"; a.click();
+  a.href = URL.createObjectURL(new Blob(["\uFEFF"+[headers.join(","),...rows].join("\r\n")],{type:"text/csv"}));
+  a.download = "KSA_Photo_"+campusOf(session)+".csv"; a.click();
 };
-
-async function refresh() {
-  rowsCache = await client.query("students:listByCampus", { token: getToken(), campusId: pageCampus }) || [];
-  const t = await client.query("students:campusTotals", { token: getToken(), campusId: pageCampus });
-  if (t) { $("stCount").textContent = t.count; $("stPhoto").textContent = t.photo; }
-  $("stWait").textContent = rowsCache.filter(s => s.bioCaptured && !s.photoSerial).length;
-  renderTable();
-}
-
-// Resume session when switching desks (same browser) if role is allowed
-(function boot() {
-  const u = getUser();
-  const token = getToken();
-  if (!token || !u) return;
-  if (u.role !== "admin" && !['photo'].includes(u.role)) {
-    // Wrong role for this desk — stay on login; optional message
-    const err = document.getElementById("loginError");
-    if (err) err.textContent = "Signed in as " + u.role + ". This desk needs photo (or admin). Sign out first or use another account.";
-    return;
-  }
-  // Pre-select campus from account
-  const sel = document.getElementById("pageCampus");
-  if (sel && u.campusId) sel.value = u.campusId;
-  showApp();
-})();
-
+(async () => { const s = await resumeSession(); if (s) showApp(s); })();
 </script>
 </body>
 </html>

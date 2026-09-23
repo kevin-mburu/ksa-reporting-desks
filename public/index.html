@@ -1,37 +1,48 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>KSA Reporting Desks</title>
-<link rel="stylesheet" href="desk.css"/>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>KSA Reporting Desks · Admissions 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+:root{--navy:#0f2142;--navy2:#0a1a36;--gold:#c8963e;--gold-lt:#f0c97a;--cream:#fdf8f0;--white:#fff;--slate:#4a5568;--muted:#8a9ab5;--border:#dde4ef;--shadow:0 4px 24px rgba(15,33,66,.1)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"DM Sans",sans-serif;background:var(--cream);color:var(--navy);min-height:100vh}
+header{background:linear-gradient(160deg,var(--navy),var(--navy2));color:var(--white);padding:32px 24px 36px;text-align:center}
+.logo{width:56px;height:56px;border-radius:50%;background:var(--gold);color:var(--navy);font-family:"DM Serif Display",serif;font-size:20px;font-weight:900;display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px}
+header h1{font-family:"DM Serif Display",serif;font-size:26px;font-weight:400;margin-bottom:6px}
+header p{font-size:13px;color:var(--gold-lt);letter-spacing:.04em}
+main{max-width:720px;margin:0 auto;padding:28px 20px 48px}
+.intro{text-align:center;color:var(--slate);font-size:14px;margin-bottom:22px;line-height:1.5}
+.grid{display:grid;gap:14px}
+a.card{display:block;text-decoration:none;color:inherit;background:var(--white);border:1.5px solid var(--border);border-radius:14px;padding:18px 20px;box-shadow:var(--shadow);transition:.15s ease}
+a.card:hover{border-color:var(--gold);transform:translateY(-2px);box-shadow:0 8px 28px rgba(15,33,66,.12)}
+a.card h2{font-family:"DM Serif Display",serif;font-size:20px;color:var(--navy);margin-bottom:4px}
+a.card p{font-size:13px;color:var(--slate);line-height:1.45}
+a.card .tag{display:inline-block;margin-top:10px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--navy);background:rgba(200,150,62,.18);padding:3px 10px;border-radius:20px}
+.note{margin-top:28px;padding:16px 18px;background:#f0f5ff;border:1px solid #c5d4f5;border-radius:12px;font-size:12px;color:var(--slate);line-height:1.55}
+.note strong{color:var(--navy)}
+</style>
 </head>
 <body>
 <header>
-  <div>
-    <h1>Kenya School of Agriculture</h1>
-    <div class="meta">Reporting desks · Admissions 2026</div>
-  </div>
+  <div class="logo">KSA</div>
+  <h1>Kenya School of Agriculture</h1>
+  <p>Reporting desks · Admissions 2026</p>
 </header>
 <main>
-  <div class="card">
-    <h2>Choose a desk</h2>
-    <p style="color:var(--slate);font-size:14px;margin-bottom:8px">Each campus uses the same pages. Login is locked to your campus (except Admin).</p>
-    <div class="home-grid">
-      <a class="home-card" href="finance.html"><h3>Finance</h3><p>Validate letter ADM, record payment, campus collections</p></a>
-      <a class="home-card" href="it.html"><h3>IT / Bio</h3><p>Capture phone, ID, guardian after Finance</p></a>
-      <a class="home-card" href="photo.html"><h3>Photo</h3><p>Link ADM to photo serial number</p></a>
-      <a class="home-card" href="principal.html"><h3>Principal</h3><p>Your campus totals and full data export</p></a>
-      <a class="home-card" href="admin.html"><h3>Admin</h3><p>All campuses, import letters, staff</p></a>
-    </div>
+  <p class="intro">Each campus uses the same pages. Login is locked to your campus (except Admin).</p>
+  <div class="grid">
+    <a class="card" href="finance.html"><h2>Finance</h2><p>Validate letter ADM, record payment, campus collections</p><span class="tag">Desk</span></a>
+    <a class="card" href="it.html"><h2>IT / Bio</h2><p>Capture phone, ID, guardian after Finance</p><span class="tag">Desk</span></a>
+    <a class="card" href="photo.html"><h2>Photo</h2><p>Link ADM to photo serial number</p><span class="tag">Desk</span></a>
+    <a class="card" href="principal.html"><h2>Principal</h2><p>Your campus totals and full data export</p><span class="tag">Campus</span></a>
+    <a class="card" href="admin.html"><h2>Admin</h2><p>All campuses, import letters, staff</p><span class="tag">HQ</span></a>
   </div>
-  <div class="card">
-    <h2>Sample logins (after seedStaff)</h2>
-    <p style="font-size:13px;color:var(--slate);line-height:1.7">
-      Password for samples: <strong>campus2026</strong><br/>
-      finance.nakuru@ksa.local · it.nakuru@ksa.local · photo.nakuru@ksa.local · principal.nakuru@ksa.local<br/>
-      Same pattern for nyeri, thika, ainabkoi, ugenya, seme.<br/>
-      Admin: the email you passed to <code>auth:seedStaff</code>
-    </p>
+  <div class="note">
+    <strong>Staff:</strong> use the account created for your campus and desk.<br/>
+    Data is stored securely in Convex — not in this static page.
   </div>
 </main>
 </body>
