@@ -85,7 +85,7 @@
 </div>
 <div id="toast"></div>
 <script type="module">
-import { login, resumeSession, clearSession, getClient, toast, startClock, campusOf } from "./shared.v2.js";
+import { login, resumeSession, clearSession, getClient, toast, startClock, campusOf, tokenOf } from "./shared.v2.js";
 let session = null, current = null, list = [];
 function showApp(s) {
   session = s;
@@ -111,7 +111,7 @@ async function loadFromIT() {
   if (!seq || !session) return;
   try {
     const res = await getClient().query("students:getBySeqForCampus", {
-      token: session.token, campusId: campusOf(session), seq: seq,
+      token: tokenOf(session), campusId: campusOf(session), seq: seq,
     });
     if (!res) {
       validBox.className = "valid-box show bad";
@@ -142,7 +142,7 @@ btnSave.onclick = async () => {
   if (!photoSerial.value.trim()) { toast("Enter photo serial", true); return; }
   try {
     await getClient().mutation("students:savePhoto", {
-      token: session.token,
+      token: tokenOf(session),
       id: current._id,
       photoSerial: photoSerial.value.trim(),
       remarks: remarks.value.trim(),
@@ -157,7 +157,7 @@ btnClear.onclick = () => {
 };
 async function refresh() {
   try {
-    list = (await getClient().query("students:listByCampus", { token: session.token, campusId: campusOf(session) })) || [];
+    list = (await getClient().query("students:listByCampus", { token: tokenOf(session), campusId: campusOf(session) })) || [];
   } catch { list = []; }
   const withPhoto = list.filter(s => s.photoSerial);
   const withBio = list.filter(s => s.bioCaptured || s.phone || s.idNumber);

@@ -97,7 +97,7 @@
 </div>
 <div id="toast"></div>
 <script type="module">
-import { login, resumeSession, clearSession, getClient, toast, startClock, fmt, TOTAL_FEE } from "./shared.v2.js";
+import { login, resumeSession, clearSession, getClient, toast, startClock, fmt, TOTAL_FEE , tokenOf } from "./shared.v2.js";
 let session = null, list = [];
 function showApp(s) {
   session = s;
@@ -117,7 +117,7 @@ btnLogout.onclick = () => { clearSession(); location.reload(); };
 btnCreateStaff.onclick = async () => {
   try {
     await getClient().mutation("auth:createStaff", {
-      token: session.token,
+      token: tokenOf(session),
       email: staffEmail.value.trim().toLowerCase(),
       password: staffPassword.value,
       name: staffName.value.trim(),
@@ -133,18 +133,28 @@ btnImport.onclick = async () => {
   try {
     let rows = JSON.parse(importJson.value.trim());
     if (!Array.isArray(rows)) rows = rows.rows || [];
-    const res = await getClient().mutation("issued:bulkImport", { token: session.token, rows });
+    const res = await getClient().mutation("issued:bulkImport", { token: tokenOf(session), rows });
     toast(`Import done: ${JSON.stringify(res)}`);
   } catch (ex) { toast(ex.message || String(ex), true); }
 };
 
 async function refresh() {
   try {
-    list = (await getClient().query("students:listAll", { token: session.token })) || [];
+    list = [];
   } catch {
-    try {
-      list = (await getClient().query("students:listByCampus", { token: session.token, campusId: "nakuru" })) || [];
-    } catch (ex) { toast(ex.message || String(ex), true); list = []; }
+    const campuses = ["nakuru","nyeri","thika","ainabkoi","ugenya","seme"];
+    const client = getClient();
+    const token = tokenOf(session);
+    if (!token) { toast("No session token", true); list = []; }
+    else {
+      list = [];
+      for (const campusId of campuses) {
+        try {
+          const rows = (await client.query("students:listByCampus", { token, campusId })) || [];
+          list = list.concat(rows);
+        } catch (_) {}
+      }
+    }
   }
   const by = {};
   list.forEach(s => {

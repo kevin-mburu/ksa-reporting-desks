@@ -93,7 +93,7 @@
 </div>
 <div id="toast"></div>
 <script type="module">
-import { login, resumeSession, clearSession, getClient, toast, startClock, fmt, campusOf } from "./shared.v2.js";
+import { login, resumeSession, clearSession, getClient, toast, startClock, fmt, campusOf, tokenOf } from "./shared.v2.js";
 let session = null, current = null, list = [];
 
 function showApp(s) {
@@ -123,7 +123,7 @@ async function loadFromFinance() {
   if (!seq || !session) return;
   try {
     const res = await getClient().query("students:getBySeqForCampus", {
-      token: session.token,
+      token: tokenOf(session),
       campusId: campusOf(session),
       seq: seq,
     });
@@ -155,7 +155,7 @@ btnSave.onclick = async () => {
   if (!current) { toast("Load a Finance student first", true); return; }
   try {
     await getClient().mutation("students:saveBio", {
-      token: session.token,
+      token: tokenOf(session),
       id: current._id,
       phone: phone.value.trim(),
       idNumber: idNumber.value.trim(),
@@ -173,7 +173,7 @@ btnClear.onclick = () => { seqInput.value = ""; current = null; validBox.classNa
 
 async function refresh() {
   try {
-    list = (await getClient().query("students:listByCampus", { token: session.token, campusId: campusOf(session) })) || [];
+    list = (await getClient().query("students:listByCampus", { token: tokenOf(session), campusId: campusOf(session) })) || [];
   } catch { list = []; }
   stFin.textContent = list.length;
   stBio.textContent = list.filter(s => s.bioCaptured || s.phone || s.idNumber).length;

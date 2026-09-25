@@ -155,7 +155,7 @@
 <script type="module">
 import {
   login, resumeSession, clearSession, getClient, saveSession,
-  toast, startClock, fmt, TOTAL_FEE, campusOf
+  toast, startClock, fmt, TOTAL_FEE, campusOf, tokenOf
 } from "./shared.v2.js";
 
 const FEE = TOTAL_FEE;
@@ -171,6 +171,11 @@ function showApp(s) {
       session.campusId = c;
       saveSession(session);
     }
+  }
+  if (!tokenOf(session)) {
+    document.getElementById("loginError").textContent =
+      "Login succeeded but no token was returned. Check auth:login response.";
+    return;
   }
   document.getElementById("loginGate").style.display = "none";
   document.getElementById("appRoot").style.display = "";
@@ -203,8 +208,10 @@ document.getElementById("btnLogout").onclick = () => {
 
 function togglePay() {
   const m = document.getElementById("payMethod").value;
-  document.getElementById("kcbWrap").style.display = m === "KCB" || m === "CHEQUE" || m === "SPLIT" ? "" : "none";
-  document.getElementById("mpesaWrap").style.display = m === "MPESA" || m === "SPLIT" ? "" : "none";
+  document.getElementById("kcbWrap").style.display =
+    m === "KCB" || m === "CHEQUE" || m === "SPLIT" ? "" : "none";
+  document.getElementById("mpesaWrap").style.display =
+    m === "MPESA" || m === "SPLIT" ? "" : "none";
   updatePay();
 }
 document.getElementById("payMethod").onchange = togglePay;
@@ -237,31 +244,26 @@ async function doLookup() {
     return;
   }
   const campusId = campusOf(session);
+  const token = tokenOf(session);
   if (!campusId) {
     box.className = "valid-box show bad";
-    box.textContent = "No campus on session — sign out and sign in again with campus selected.";
+    box.textContent = "No campus on session — sign out and sign in with campus selected.";
+    return;
+  }
+  if (!token) {
+    box.className = "valid-box show bad";
+    box.textContent = "No session token — sign out and sign in again.";
     return;
   }
   try {
     const client = getClient();
-    const token = session.token;
-
-    // Convex validator expects `seq` (not sequence)
     let res;
     try {
-      res = await client.query("issued:lookupBySeq", {
-        token,
-        campusId,
-        seq,
-      });
+      res = await client.query("issued:lookupBySeq", { token, campusId, seq });
     } catch (e1) {
-      // Fallback if function has no token arg
       try {
-        res = await client.query("issued:lookupBySeq", {
-          campusId,
-          seq,
-        });
-      } catch (e2) {
+        res = await client.query("issued:lookupBySeq", { campusId, seq });
+      } catch {
         throw e1;
       }
     }
@@ -285,7 +287,8 @@ async function doLookup() {
         programme: res.programme || "HP",
       });
       document.getElementById("groundAdmPreview").value =
-        (typeof next === "string" ? next : next?.admNo || next?.groundAdmNo) || "(assigned on save)";
+        (typeof next === "string" ? next : next?.admNo || next?.groundAdmNo) ||
+        "(assigned on save)";
     } catch {
       document.getElementById("groundAdmPreview").value = "(assigned on save)";
     }
@@ -300,12 +303,17 @@ document.getElementById("btnAssign").onclick = async () => {
     toast("Look up a valid letter sequence first.", true);
     return;
   }
+  const token = tokenOf(session);
+  if (!token) {
+    toast("No session token — sign in again.", true);
+    return;
+  }
   const paid = parseFloat(document.getElementById("amountPaid").value) || 0;
   const payMethod = document.getElementById("payMethod").value;
   try {
     const client = getClient();
     await client.mutation("students:saveFinance", {
-      token: session.token,
+      token,
       letterAdmNo: lookup.admNo || lookup.letterAdmNo,
       studentName: lookup.studentName,
       campusId: campusOf(session),
@@ -344,12 +352,22 @@ document.getElementById("btnClear").onclick = clearForm;
 
 async function refreshList() {
   if (!session) return;
+  const token = tokenOf(session);
+  const campusId = campusOf(session);
+  if (!token) {
+    toast("Session has no token — sign out and sign in again.", true);
+    return;
+  }
+  if (!campusId) {
+    toast("No campus on session — sign out and choose campus again.", true);
+    return;
+  }
   try {
     const client = getClient();
     students =
       (await client.query("students:listByCampus", {
-        token: session.token,
-        campusId: campusOf(session),
+        token,
+        campusId,
       })) || [];
   } catch (ex) {
     toast(ex.message || String(ex), true);
@@ -413,7 +431,7 @@ function renderTable() {
       if (!confirm("Delete this finance record? The letter can be assigned again.")) return;
       try {
         await getClient().mutation("students:remove", {
-          token: session.token,
+          token: tokenOf(session),
           id: btn.getAttribute("data-del"),
         });
         toast("Deleted", true);

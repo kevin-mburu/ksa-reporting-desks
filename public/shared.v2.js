@@ -25,23 +25,43 @@ export function clearSession() {
   localStorage.removeItem(SESSION_KEY);
 }
 
+/** Prefer token / sessionToken from any shape Convex returns */
+export function tokenOf(session) {
+  return (
+    session?.token ||
+    session?.sessionToken ||
+    session?.authToken ||
+    session?.staff?.token ||
+    ""
+  );
+}
+
 /**
- * Login. campusId is the desk page campus (sent as pageCampusId to Convex).
- * Client does NOT block on role — Convex already checks password + campus.
+ * Login. campusId is the desk page campus (sent as pageCampusId).
+ * No client role block — Convex checks password + campus.
  */
 export async function login(email, password, campusId) {
   const client = getClient();
-  const session = await client.mutation("auth:login", {
+  const raw = await client.mutation("auth:login", {
     email: email.trim().toLowerCase(),
     password,
     pageCampusId: campusId || undefined,
   });
 
-  let full = session || {};
+  let full = { ...(raw || {}) };
+
+  // Keep token from login response under a consistent key
+  const tok =
+    full.token || full.sessionToken || full.authToken || raw?.token || "";
+  if (tok) full.token = tok;
+
   if (full.token) {
     try {
       const me = await client.query("auth:me", { token: full.token });
-      if (me) full = { ...full, ...me };
+      if (me) {
+        full = { ...full, ...me };
+        if (!full.token) full.token = tok;
+      }
     } catch (_) {
       /* keep session */
     }
@@ -55,12 +75,10 @@ export async function login(email, password, campusId) {
     null;
   if (role) full.role = role;
 
-  // Prefer API campus, else form campus
   full.campusId =
-    full.campusId ||
-    full.staff?.campusId ||
-    campusId ||
-    "";
+    full.campusId || full.staff?.campusId || campusId || "";
+
+  if (!full.token && tok) full.token = tok;
 
   saveSession(full);
   return full;
@@ -68,15 +86,17 @@ export async function login(email, password, campusId) {
 
 export async function resumeSession() {
   const s = loadSession();
-  if (!s?.token) return null;
+  if (!tokenOf(s)) return null;
   try {
     const client = getClient();
-    const session = await client.query("auth:me", { token: s.token });
+    const token = tokenOf(s);
+    const session = await client.query("auth:me", { token });
     if (!session) {
       clearSession();
       return null;
     }
     const merged = { ...s, ...session };
+    if (!merged.token) merged.token = token;
     if (merged.staff?.role && !merged.role) merged.role = merged.staff.role;
     merged.campusId =
       merged.campusId || merged.staff?.campusId || s.campusId || "";

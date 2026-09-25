@@ -79,7 +79,7 @@
 </div>
 <div id="toast"></div>
 <script type="module">
-import { login, resumeSession, clearSession, getClient, toast, startClock, fmt, campusOf, TOTAL_FEE } from "./shared.v2.js";
+import { login, resumeSession, clearSession, getClient, toast, startClock, fmt, campusOf, TOTAL_FEE , tokenOf } from "./shared.v2.js";
 let session = null, list = [];
 function showApp(s) {
   session = s;
@@ -98,7 +98,7 @@ loginForm.onsubmit = async (e) => {
 btnLogout.onclick = () => { clearSession(); location.reload(); };
 async function refresh() {
   try {
-    list = (await getClient().query("students:listByCampus", { token: session.token, campusId: campusOf(session) })) || [];
+    list = (await getClient().query("students:listByCampus", { token: tokenOf(session), campusId: campusOf(session) })) || [];
   } catch (ex) { toast(ex.message || String(ex), true); list = []; }
   const fee = TOTAL_FEE;
   const col = list.reduce((a,s)=>a+(s.amountPaid||0),0);
