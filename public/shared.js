@@ -45,7 +45,6 @@ export function tokenOf(session) {
   for (const c of candidates) {
     if (typeof c === "string" && c.length > 0) return c;
   }
-  // Deep scan: any string value on a key containing "token" or "session"
   for (const [k, v] of Object.entries(session)) {
     if (typeof v === "string" && v.length > 8) {
       const lk = k.toLowerCase();
@@ -55,7 +54,8 @@ export function tokenOf(session) {
       for (const [k2, v2] of Object.entries(v)) {
         if (typeof v2 === "string" && v2.length > 8) {
           const lk2 = k2.toLowerCase();
-          if (lk2.includes("token") || lk2 === "sid" || lk2 === "sessionid") return v2;
+          if (lk2.includes("token") || lk2 === "sid" || lk2 === "sessionid")
+            return v2;
         }
       }
     }
@@ -71,9 +71,18 @@ export async function login(email, password, campusId) {
     pageCampusId: campusId || undefined,
   });
 
-  // Always log shape in console for debugging
   console.log("[KSA auth:login response]", raw);
-  console.log("[KSA auth:login keys]", raw && typeof raw === "object" ? Object.keys(raw) : typeof raw);
+  console.log(
+    "[KSA auth:login keys]",
+    raw && typeof raw === "object" ? Object.keys(raw) : typeof raw
+  );
+
+  // Reject failed logins (Convex may return { ok: false, error } instead of throwing)
+  if (!raw || raw.ok === false || raw.error) {
+    throw new Error(
+      (raw && raw.error) || "Invalid email or password."
+    );
+  }
 
   let full = { ...(raw && typeof raw === "object" ? raw : {}) };
 
@@ -86,9 +95,13 @@ export async function login(email, password, campusId) {
       const me = await client.query("auth:me", { token: full.token });
       console.log("[KSA auth:me response]", me);
       if (me && typeof me === "object") {
-        full = { ...full, ...me };
-        if (!tokenOf(full)) full.token = tok;
-        else full.token = tokenOf(full);
+        if (me.ok === false || me.error) {
+          console.warn("[KSA auth:me error]", me.error);
+        } else {
+          full = { ...full, ...me };
+          if (!tokenOf(full)) full.token = tok;
+          else full.token = tokenOf(full);
+        }
       }
     } catch (e) {
       console.warn("[KSA auth:me failed]", e);
@@ -112,7 +125,6 @@ export async function login(email, password, campusId) {
     );
   }
 
-  // Always persist under .token for the rest of the app
   full.token = tokenOf(full);
   saveSession(full);
   return full;
@@ -125,7 +137,7 @@ export async function resumeSession() {
     const client = getClient();
     const token = tokenOf(s);
     const session = await client.query("auth:me", { token });
-    if (!session) {
+    if (!session || session.ok === false || session.error) {
       clearSession();
       return null;
     }
