@@ -257,16 +257,11 @@ async function doLookup() {
   }
   try {
     const client = getClient();
-    let res;
-    try {
-      res = await client.query("issued:lookupBySeq", { token, campusId, seq });
-    } catch (e1) {
-      try {
-        res = await client.query("issued:lookupBySeq", { campusId, seq });
-      } catch {
-        throw e1;
-      }
-    }
+    // issued:lookupBySeq does NOT take token — only campusId + seq
+    const res = await client.query("issued:lookupBySeq", {
+      campusId,
+      seq,
+    });
 
     if (!res || res.error || !(res.admNo || res.letterAdmNo)) {
       box.className = "valid-box show bad";
