@@ -165,7 +165,7 @@ import {
   login, resumeSession, clearSession, getClient, saveSession,
   toast, startClock, fmt, TOTAL_FEE, campusOf, tokenOf,
   withBusy, isSessionError, toUpper, toLowerEmail
-} from "./shared.v2.js";
+, assertDeskAccess} from "./shared.v2.js";
 
 const FEE = TOTAL_FEE;
 let session = null;
@@ -173,6 +173,7 @@ let students = [];
 let lookup = null;
 
 function showApp(s) {
+  assertDeskAccess(s, ['finance'], 'Finance Desk');
   session = s;
   if (!campusOf(session)) {
     const c = document.getElementById("loginCampus")?.value;
@@ -755,9 +756,14 @@ document.getElementById("btnExport").onclick = () => {
 };
 
 (async () => {
-  const s = await resumeSession();
-  if (s) showApp(s);
-  updatePay();
+  try {
+    const s = await resumeSession();
+    if (s) showApp(s);
+  } catch (ex) {
+    const err = document.getElementById("loginError");
+    if (err) err.textContent = ex.message || String(ex);
+  }
+  if (typeof updatePay === "function") updatePay();
 })();
 </script>
 

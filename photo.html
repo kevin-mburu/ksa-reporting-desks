@@ -85,9 +85,10 @@
 </div>
 <div id="toast"></div>
 <script type="module">
-import { login, resumeSession, clearSession, getClient, toast, startClock, campusOf, tokenOf, withBusy, isSessionError, toUpper } from "./shared.v2.js";
+import { login, resumeSession, clearSession, getClient, toast, startClock, campusOf, tokenOf, withBusy, isSessionError, toUpper , assertDeskAccess} from "./shared.v2.js";
 let session = null, current = null, list = [];
 function showApp(s) {
+  assertDeskAccess(s, ['photo', 'photo_desk'], 'Photo Desk');
   session = s;
   loginGate.style.display = "none";
   appRoot.style.display = "";
@@ -217,7 +218,15 @@ btnExport.onclick = () => {
   a.href = URL.createObjectURL(new Blob(["\uFEFF"+[headers.join(","),...rows].join("\r\n")],{type:"text/csv"}));
   a.download = "KSA_Photo_"+campusOf(session)+".csv"; a.click();
 };
-(async () => { const s = await resumeSession(); if (s) showApp(s); })();
+(async () => {
+  try {
+    const s = await resumeSession();
+    if (s) showApp(s);
+  } catch (ex) {
+    const err = document.getElementById("loginError");
+    if (err) err.textContent = ex.message || String(ex);
+  }
+})();
 </script>
 
 <footer class="site-footer pansckev-footer">

@@ -97,9 +97,10 @@
 </div>
 <div id="toast"></div>
 <script type="module">
-import { login, resumeSession, clearSession, getClient, toast, startClock, fmt, TOTAL_FEE , tokenOf } from "./shared.v2.js";
+import { login, resumeSession, clearSession, getClient, toast, startClock, fmt, TOTAL_FEE , tokenOf , assertDeskAccess} from "./shared.v2.js";
 let session = null, list = [];
 function showApp(s) {
+  assertDeskAccess(s, ['admin'], 'Admin Desk');
   session = s;
   loginGate.style.display = "none";
   appRoot.style.display = "";
@@ -189,7 +190,15 @@ btnExportAll.onclick = () => {
   a.href = URL.createObjectURL(new Blob(["\uFEFF"+[headers.join(","),...rows].join("\r\n")],{type:"text/csv"}));
   a.download = "KSA_Admin_All.csv"; a.click();
 };
-(async () => { const s = await resumeSession(); if (s) showApp(s); })();
+(async () => {
+  try {
+    const s = await resumeSession();
+    if (s) showApp(s);
+  } catch (ex) {
+    const err = document.getElementById("loginError");
+    if (err) err.textContent = ex.message || String(ex);
+  }
+})();
 </script>
 
 <footer class="site-footer pansckev-footer">

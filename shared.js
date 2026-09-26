@@ -153,11 +153,33 @@ export async function resumeSession() {
   }
 }
 
+export function roleOf(session) {
+  return String(
+    session?.role || session?.staff?.role || session?.user?.role || ""
+  )
+    .trim()
+    .toLowerCase();
+}
+
 export function requireRole(session, roles) {
-  const role = session?.role || session?.staff?.role;
+  const role = roleOf(session);
   if (!role) return false;
   if (role === "admin") return true;
-  return roles.includes(role);
+  const allowed = (roles || []).map((r) => String(r).toLowerCase());
+  return allowed.includes(role);
+}
+
+/**
+ * Enforce desk access. Admin always allowed.
+ * On failure: clear session and throw so login form shows the error.
+ */
+export function assertDeskAccess(session, allowedRoles, deskName) {
+  if (requireRole(session, allowedRoles)) return true;
+  const role = roleOf(session) || "(none)";
+  clearSession();
+  throw new Error(
+    `Access denied: "${role}" cannot open ${deskName}. Use a ${allowedRoles.join(" / ")} account (or admin).`
+  );
 }
 
 export function campusOf(session) {

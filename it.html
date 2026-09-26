@@ -93,10 +93,11 @@
 </div>
 <div id="toast"></div>
 <script type="module">
-import { login, resumeSession, clearSession, getClient, toast, startClock, fmt, campusOf, tokenOf, withBusy, isSessionError, toUpper, toLowerEmail } from "./shared.v2.js";
+import { login, resumeSession, clearSession, getClient, toast, startClock, fmt, campusOf, tokenOf, withBusy, isSessionError, toUpper, toLowerEmail, assertDeskAccess, roleOf } from "./shared.v2.js";
 let session = null, current = null, list = [];
 
 function showApp(s) {
+  assertDeskAccess(s, ["it", "it_desk", "bio"], "IT / Bio Desk");
   session = s;
   document.getElementById("loginGate").style.display = "none";
   document.getElementById("appRoot").style.display = "";
@@ -107,11 +108,31 @@ function showApp(s) {
 }
 document.getElementById("loginForm").onsubmit = async (e) => {
   e.preventDefault();
+  loginError.textContent = "";
   try {
-    showApp(await login(loginEmail.value, loginPassword.value, loginCampus.value));
+    const s = await login(loginEmail.value, loginPassword.value, loginCampus.value);
+    showApp(s);
   } catch (ex) { loginError.textContent = ex.message || String(ex); }
 };
 btnLogout.onclick = () => { clearSession(); location.reload(); };
+
+function seqMatchesLetter(letterAdm, seq) {
+  const want = String(parseInt(String(seq).replace(/\D/g, "") || "0", 10));
+  const letter = String(letterAdm || "");
+  // e.g. NKR/HP/C1/003/2026 → 3
+  const m = letter.match(/\/(\d{1,4})\//g);
+  if (m) {
+    for (const part of m) {
+      const n = String(parseInt(part.replace(/\D/g, ""), 10));
+      if (n === want) return true;
+    }
+  }
+  const parts = letter.split("/");
+  for (const p of parts) {
+    if (/^\d+$/.test(p) && String(parseInt(p, 10)) === want) return true;
+  }
+  return letter.endsWith("/" + seq) || letter.includes("/" + String(seq).padStart(3, "0") + "/");
+}
 
 let t;
 seqInput.oninput = () => { clearTimeout(t); t = setTimeout(loadFromFinance, 350); };
@@ -120,13 +141,43 @@ async function loadFromFinance() {
   const seq = seqInput.value.trim();
   validBox.className = "valid-box";
   current = null;
+  admShow.value = studentName.value = paySummary.value = "";
+  ["phone","idNumber","email","age","guardian","guardianPhone"].forEach(id => document.getElementById(id).value = "");
+  gender.value = "";
   if (!seq || !session) return;
+  const token = tokenOf(session);
+  const campusId = campusOf(session);
+  if (!token || !campusId) {
+    validBox.className = "valid-box show bad";
+    validBox.textContent = "Missing token or campus — sign in again.";
+    return;
+  }
   try {
-    const res = await getClient().query("students:getBySeqForCampus", {
-      token: tokenOf(session),
-      campusId: campusOf(session),
-      seq: seq,
-    });
+    const client = getClient();
+    let res = null;
+    // Primary query
+    try {
+      res = await client.query("students:getBySeqForCampus", { token, campusId, seq });
+    } catch (e1) {
+      console.warn("[KSA IT getBySeqForCampus]", e1);
+      try {
+        res = await client.query("students:getBySeqForCampus", {
+          token, campusId, sequence: Number(seq) || seq, seq: Number(seq) || seq,
+        });
+      } catch (e2) {
+        console.warn("[KSA IT getBySeq alt]", e2);
+      }
+    }
+    // Fallback: list campus students and match sequence in letter ADM
+    if (!res) {
+      const all = (await client.query("students:listByCampus", { token, campusId })) || [];
+      res = all.find(s =>
+        seqMatchesLetter(s.letterAdmNo || "", seq) ||
+        seqMatchesLetter(s.admNo || "", seq) ||
+        seqMatchesLetter(s.groundAdmNo || "", seq)
+      ) || null;
+      if (res) console.log("[KSA IT] matched via listByCampus", res);
+    }
     if (!res) {
       validBox.className = "valid-box show bad";
       validBox.textContent = "Not on Finance register for this campus yet.";
@@ -134,21 +185,20 @@ async function loadFromFinance() {
     }
     current = res;
     admShow.value = res.groundAdmNo || res.admNo || res.letterAdmNo || "";
-    studentName.value = res.studentName || "";
+    studentName.value = (res.studentName || "").toUpperCase();
     paySummary.value = (res.payMethod || "—") + " · KES " + fmt(res.amountPaid || 0);
-    phone.value = res.phone || "";
-    idNumber.value = res.idNumber || "";
-    email.value = res.email || "";
+    phone.value = digitsOnly(res.phone || "");
+    idNumber.value = (res.idNumber || "").toUpperCase();
+    email.value = (res.email || "").toLowerCase();
     age.value = res.age || "";
     gender.value = res.gender || "";
-    guardian.value = res.guardian || "";
-    guardianPhone.value = res.guardianPhone || "";
-    if (res.bioCaptured || res.phone || res.idNumber) {
+    guardian.value = (res.guardian || "").toUpperCase();
+    guardianPhone.value = digitsOnly(res.guardianPhone || "");
+    if (res.bioCaptured || res.phone || res.idNumber || res.bioAt) {
       validBox.className = "valid-box show warn";
       validBox.textContent =
-        "Bio already captured — " +
-        (res.studentName || res.groundAdmNo || "") +
-        ". You can update and Save again.";
+        "Already through IT — " + (res.studentName || res.groundAdmNo || "") +
+        ". Edit fields and Save to update (not a new capture).";
     } else {
       validBox.className = "valid-box show ok";
       validBox.textContent = "Loaded from Finance — " + (res.studentName || "");
@@ -162,7 +212,6 @@ async function loadFromFinance() {
 function digitsOnly(s) {
   return String(s ?? "").replace(/\D/g, "");
 }
-// Live: phones = digits only; email lower; other text upper
 phone.addEventListener("input", () => { phone.value = digitsOnly(phone.value); });
 guardianPhone.addEventListener("input", () => { guardianPhone.value = digitsOnly(guardianPhone.value); });
 email.addEventListener("input", () => { email.value = email.value.toLowerCase(); });
@@ -187,11 +236,8 @@ btnSave.onclick = async () => {
   if (!guardianV) { toast("Guardian name is required.", true); guardian.focus(); return; }
   if (!gPhoneV) { toast("Guardian phone is required (numbers only).", true); guardianPhone.focus(); return; }
   if (gPhoneV.length < 9) { toast("Guardian phone must be at least 9 digits.", true); guardianPhone.focus(); return; }
-  phone.value = phoneV;
-  idNumber.value = idV;
-  email.value = emailV;
-  guardian.value = guardianV;
-  guardianPhone.value = gPhoneV;
+  phone.value = phoneV; idNumber.value = idV; email.value = emailV;
+  guardian.value = guardianV; guardianPhone.value = gPhoneV;
   await withBusy(btnSave, async () => {
     try {
       await getClient().mutation("students:saveBio", {
@@ -218,7 +264,11 @@ btnSave.onclick = async () => {
     }
   }, "Saving…");
 };
-btnClear.onclick = () => { seqInput.value = ""; current = null; validBox.className = "valid-box"; ["admShow","studentName","paySummary","phone","idNumber","email","age","guardian","guardianPhone"].forEach(id => document.getElementById(id).value = ""); gender.value = ""; };
+btnClear.onclick = () => {
+  seqInput.value = ""; current = null; validBox.className = "valid-box";
+  ["admShow","studentName","paySummary","phone","idNumber","email","age","guardian","guardianPhone"].forEach(id => document.getElementById(id).value = "");
+  gender.value = "";
+};
 
 async function refresh() {
   try {
@@ -227,12 +277,15 @@ async function refresh() {
   stFin.textContent = list.length;
   stBio.textContent = list.filter(s => s.bioCaptured || s.phone || s.idNumber).length;
   const q = (searchInput.value || "").toLowerCase();
-  const rows = q ? list.filter(s => (s.studentName||"").toLowerCase().includes(q) || (s.admNo||"").toLowerCase().includes(q)) : list;
+  const rows = q ? list.filter(s => (s.studentName||"").toLowerCase().includes(q) || (s.admNo||"").toLowerCase().includes(q) || (s.letterAdmNo||"").toLowerCase().includes(q)) : list;
   tableBody.innerHTML = rows.length ? rows.map((s,i) => `<tr>
     <td>${i+1}</td><td><span class="adm-b">${s.groundAdmNo||s.admNo||"—"}</span></td>
     <td><strong>${s.studentName||"—"}</strong></td><td>${s.phone||"—"}</td><td>${s.idNumber||"—"}</td>
     <td>${s.gender||"—"}</td><td style="font-size:11px">${s.bioAt||"—"}</td>
-    <td><button type="button" class="btn btn-gold btn-sm" data-e="${s._id}">Edit</button></td>
+    <td style="white-space:nowrap">
+      <button type="button" class="btn btn-gold btn-sm" data-e="${s._id}">Edit</button>
+      <button type="button" class="btn btn-danger btn-sm" data-del-adm="${(s.admNo||s.letterAdmNo||s.groundAdmNo||"").replace(/"/g,"")}">Del</button>
+    </td>
   </tr>`).join("") : `<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">No records</td></tr>`;
   tableBody.querySelectorAll("[data-e]").forEach(btn => {
     btn.onclick = () => {
@@ -241,13 +294,36 @@ async function refresh() {
       current = s;
       seqInput.value = "";
       admShow.value = s.groundAdmNo || s.admNo;
-      studentName.value = s.studentName || "";
+      studentName.value = (s.studentName || "").toUpperCase();
       paySummary.value = (s.payMethod||"—") + " · KES " + fmt(s.amountPaid||0);
-      phone.value = s.phone||""; idNumber.value = s.idNumber||""; email.value = s.email||"";
-      age.value = s.age||""; gender.value = s.gender||""; guardian.value = s.guardian||""; guardianPhone.value = s.guardianPhone||"";
+      phone.value = digitsOnly(s.phone||""); idNumber.value = (s.idNumber||"").toUpperCase();
+      email.value = (s.email||"").toLowerCase();
+      age.value = s.age||""; gender.value = s.gender||"";
+      guardian.value = (s.guardian||"").toUpperCase(); guardianPhone.value = digitsOnly(s.guardianPhone||"");
       validBox.className = "valid-box show warn";
-      validBox.textContent = "Editing — update fields and Save.";
+      validBox.textContent = s.bioCaptured || s.phone || s.idNumber
+        ? "Already through IT — editing existing bio."
+        : "Editing — update fields and Save.";
       window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+  });
+  tableBody.querySelectorAll("[data-del-adm]").forEach(btn => {
+    btn.onclick = async () => {
+      if (!confirm("Delete this student record? This removes Finance + IT data for that ADM.")) return;
+      const admNo = (btn.getAttribute("data-del-adm") || "").trim();
+      if (!admNo) { toast("Missing ADM", true); return; }
+      await withBusy(btn, async () => {
+        try {
+          await getClient().mutation("students:removeStudent", { token: tokenOf(session), admNo });
+          toast("Deleted");
+          if (current && (current.admNo === admNo || current.letterAdmNo === admNo)) {
+            btnClear.onclick();
+          }
+          await refresh();
+        } catch (ex) {
+          toast(ex.message || String(ex), true);
+        }
+      }, "…");
     };
   });
 }
@@ -259,7 +335,15 @@ btnExport.onclick = () => {
   a.href = URL.createObjectURL(new Blob(["\uFEFF"+[headers.join(","),...rows].join("\r\n")],{type:"text/csv"}));
   a.download = "KSA_IT_"+campusOf(session)+".csv"; a.click();
 };
-(async () => { const s = await resumeSession(); if (s) showApp(s); })();
+(async () => {
+  try {
+    const s = await resumeSession();
+    if (s) showApp(s);
+  } catch (ex) {
+    const err = document.getElementById("loginError");
+    if (err) err.textContent = ex.message || String(ex);
+  }
+})();
 </script>
 
 <footer class="site-footer pansckev-footer">
