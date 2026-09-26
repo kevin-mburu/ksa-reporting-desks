@@ -321,7 +321,11 @@ async function refresh() {
       if (!admNo) { toast("Missing ADM", true); return; }
       await withBusy(btn, async () => {
         try {
-          const r = await removeStudentRecord(session, list.find(x => (x.admNo||x.letterAdmNo||x.groundAdmNo||"") === admNo) || { admNo });
+          const editId = btn.closest("tr")?.querySelector("[data-e]")?.getAttribute("data-e");
+          const row = list.find(x => String(x._id) === String(editId))
+            || list.find(x => x.admNo === admNo || x.letterAdmNo === admNo || x.groundAdmNo === admNo)
+            || { admNo };
+          const r = await removeStudentRecord(session, row);
           toast("Deleted (" + (r?.usedAdm || admNo) + ")");
           if (current && (current.admNo === admNo || current.letterAdmNo === admNo)) {
             btnClear.onclick();

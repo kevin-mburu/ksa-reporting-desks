@@ -183,16 +183,19 @@ export function assertDeskAccess(session, allowedRoles, deskName) {
 }
 
 /**
- * Delete student by ADM. Tries letter / ground / admNo variants.
- * Returns { ok: true, usedAdm } or throws.
+ * Delete student by ADM. Tries letter / ground / admNo (+ optional campusId).
+ * Verifies the student is gone from listByCampus before returning ok.
  */
 export async function removeStudentRecord(session, studentOrAdm) {
   const token = tokenOf(session);
+  const campusId = campusOf(session);
   if (!token) throw new Error("No session token — sign in again.");
   const candidates = [];
+  let docId = "";
   if (typeof studentOrAdm === "string") {
     candidates.push(studentOrAdm.trim());
   } else if (studentOrAdm && typeof studentOrAdm === "object") {
+    docId = String(studentOrAdm._id || studentOrAdm.id || "");
     for (const k of ["admNo", "letterAdmNo", "groundAdmNo"]) {
       const v = String(studentOrAdm[k] || "").trim();
       if (v && !candidates.includes(v)) candidates.push(v);
@@ -201,28 +204,80 @@ export async function removeStudentRecord(session, studentOrAdm) {
   if (!candidates.length) throw new Error("Missing admission number for delete.");
 
   const client = getClient();
-  let lastErr = null;
-  for (const admNo of candidates) {
+
+  async function stillPresent(admTried) {
+    if (!campusId) return null;
     try {
-      await client.mutation("students:removeStudent", { token, admNo });
-      return { ok: true, usedAdm: admNo };
-    } catch (e) {
-      lastErr = e;
-      const m = String(e?.message || e || "");
-      // try next ADM variant if this one was not found / wrong key
-      if (
-        m.includes("not found") ||
-        m.includes("Not found") ||
-        m.includes("no student") ||
-        m.includes("ArgumentValidation")
-      ) {
-        continue;
-      }
-      // hard failure (auth etc.)
-      throw e;
+      const all =
+        (await client.query("students:listByCampus", { token, campusId })) || [];
+      return all.find(
+        (s) =>
+          (docId && String(s._id) === docId) ||
+          candidates.some(
+            (a) =>
+              s.admNo === a || s.letterAdmNo === a || s.groundAdmNo === a
+          ) ||
+          s.admNo === admTried ||
+          s.letterAdmNo === admTried ||
+          s.groundAdmNo === admTried
+      );
+    } catch {
+      return null;
     }
   }
-  throw lastErr || new Error("Delete failed for all ADM variants: " + candidates.join(", "));
+
+  const argVariants = (admNo) => {
+    const list = [{ token, admNo }];
+    if (campusId) list.push({ token, admNo, campusId });
+    return list;
+  };
+
+  let lastErr = null;
+  let lastResult = null;
+  for (const admNo of candidates) {
+    for (const args of argVariants(admNo)) {
+      try {
+        lastResult = await client.mutation("students:removeStudent", args);
+        // Mutation did not throw — verify actually gone
+        const left = await stillPresent(admNo);
+        if (!left) {
+          return {
+            ok: true,
+            usedAdm: admNo,
+            server: lastResult,
+          };
+        }
+        // "Success" but still in DB — keep trying other keys
+        lastErr = new Error(
+          "removeStudent returned without error but student still exists (tried " +
+            admNo +
+            "). Server reply: " +
+            JSON.stringify(lastResult ?? null)
+        );
+      } catch (e) {
+        lastErr = e;
+        const m = String(e?.message || e || "");
+        if (
+          m.includes("extra field") ||
+          m.includes("ArgumentValidation") ||
+          m.includes("not found") ||
+          m.includes("Not found") ||
+          m.includes("no student")
+        ) {
+          continue;
+        }
+        throw e;
+      }
+    }
+  }
+  throw (
+    lastErr ||
+    new Error(
+      "Delete failed for ADM variants: " +
+        candidates.join(", ") +
+        ". Backend may not implement removeStudent correctly."
+    )
+  );
 }
 
 export function campusOf(session) {

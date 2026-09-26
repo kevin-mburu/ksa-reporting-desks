@@ -86,7 +86,7 @@
 <div id="toast"></div>
 <script type="module">
 /* BUILD_STAMP: 2026-09-26-photo-save-exact-v1 */
-import { login, resumeSession, clearSession, getClient, toast, startClock, campusOf, tokenOf, withBusy, isSessionError, toUpper , assertDeskAccess, removeStudentRecord } from "./shared.v2.js";
+import { login, resumeSession, clearSession, getClient, toast, startClock, campusOf, tokenOf, withBusy, isSessionError, toUpper , assertDeskAccess } from "./shared.v2.js";
 let session = null, current = null, list = [];
 function showApp(s) {
   assertDeskAccess(s, ['photo', 'photo_desk'], 'Photo Desk');
@@ -241,7 +241,7 @@ async function refresh() {
     <td>${s.remarks||"—"}</td><td style="font-size:11px">${s.photoAt||"—"}</td>
     <td style="white-space:nowrap">
       <button type="button" class="btn btn-gold btn-sm" data-e="${s._id}">Edit</button>
-      <button type="button" class="btn btn-danger btn-sm" data-del-adm="${(s.admNo||s.letterAdmNo||s.groundAdmNo||"").replace(/"/g,"")}">Del</button>
+      <button type="button" class="btn btn-danger btn-sm" data-clear-photo="${(s.admNo||s.letterAdmNo||s.groundAdmNo||"").replace(/"/g,"")}" title="Clear photo only">Clear</button>
     </td>
   </tr>`).join("") : `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">No entries</td></tr>`;
   tableBody.querySelectorAll("[data-e]").forEach(btn => {
@@ -258,34 +258,68 @@ async function refresh() {
       validBox.textContent = "Editing photo entry.";
     };
   });
-  tableBody.querySelectorAll("[data-del-adm]").forEach(btn => {
+  // Clear photo only — student stays on Finance + IT, back to "awaiting photo"
+  tableBody.querySelectorAll("[data-clear-photo]").forEach(btn => {
     btn.onclick = async () => {
-      if (!confirm("Delete this student record? Removes Finance + IT + Photo for that ADM.")) return;
-      const admNo = (btn.getAttribute("data-del-adm") || "").trim();
-      const row = list.find(x =>
-        (x.admNo || x.letterAdmNo || x.groundAdmNo || "") === admNo ||
-        String(x._id) === btn.closest("tr")?.querySelector("[data-e]")?.getAttribute("data-e")
-      ) || { admNo, letterAdmNo: admNo, groundAdmNo: admNo };
+      if (!confirm("Clear photo only?\n\nFinance and IT bio stay. Student will show as awaiting photo again.")) return;
+      const admNo = (btn.getAttribute("data-clear-photo") || "").trim();
+      const editId = btn.closest("tr")?.querySelector("[data-e]")?.getAttribute("data-e");
+      const row =
+        list.find((x) => String(x._id) === String(editId)) ||
+        list.find(
+          (x) =>
+            x.admNo === admNo ||
+            x.letterAdmNo === admNo ||
+            x.groundAdmNo === admNo
+        );
+      const useAdm = String(
+        row?.admNo || row?.letterAdmNo || row?.groundAdmNo || admNo || ""
+      ).trim();
+      const campusId = campusOf(session);
+      if (!useAdm || !campusId) {
+        toast("Missing ADM or campus", true);
+        return;
+      }
       await withBusy(btn, async () => {
         try {
-          const r = await removeStudentRecord(session, row);
-          toast("Deleted (" + r.usedAdm + ")");
-          if (current && (
-            current.admNo === r.usedAdm || current.letterAdmNo === r.usedAdm ||
-            current.groundAdmNo === r.usedAdm || current.admNo === admNo
-          )) {
-            btnClear.onclick();
+          // Re-save photo with empty serial = clear photo stage (keeps student)
+          await getClient().mutation("students:savePhoto", {
+            token: tokenOf(session),
+            admNo: useAdm,
+            campusId,
+            photoSerial: "",
+            remarks: "",
+          });
+          toast("Photo cleared — awaiting photo again");
+          if (current && String(current._id) === String(row?._id)) {
+            photoSerial.value = "";
+            remarks.value = "";
+            validBox.className = "valid-box show warn";
+            validBox.textContent = "Photo cleared — enter a new serial to save.";
           }
           await refresh();
-          // Verify gone
-          const still = list.find(s =>
-            s.admNo === r.usedAdm || s.letterAdmNo === r.usedAdm || s.groundAdmNo === r.usedAdm ||
-            s.admNo === admNo || s.letterAdmNo === admNo
-          );
-          if (still) {
-            toast("Server said deleted but student still in list — check Convex removeStudent uses the same admNo field.", true);
-          }
         } catch (ex) {
+          const msg = String(ex?.message || ex || "");
+          // If empty serial rejected, try a dedicated clear mutation name
+          if (msg.includes("photoSerial") || msg.includes("ArgumentValidation") || msg.includes("required")) {
+            try {
+              await getClient().mutation("students:clearPhoto", {
+                token: tokenOf(session),
+                admNo: useAdm,
+                campusId,
+              });
+              toast("Photo cleared — awaiting photo again");
+              await refresh();
+              return;
+            } catch (ex2) {
+              toast(
+                "Could not clear photo. Backend may need clearPhoto or allow empty photoSerial. " +
+                  (ex2.message || msg),
+                true
+              );
+              return;
+            }
+          }
           toast(ex.message || String(ex), true);
         }
       }, "…");
