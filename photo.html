@@ -85,7 +85,7 @@
 </div>
 <div id="toast"></div>
 <script type="module">
-/* BUILD_STAMP: 2026-09-26-savebio-admno-v2 */
+/* BUILD_STAMP: 2026-09-26-photo-save-exact-v1 */
 import { login, resumeSession, clearSession, getClient, toast, startClock, campusOf, tokenOf, withBusy, isSessionError, toUpper , assertDeskAccess} from "./shared.v2.js";
 let session = null, current = null, list = [];
 function showApp(s) {
@@ -188,7 +188,6 @@ btnSave.onclick = async () => {
   const admNo = String(
     current.admNo || current.letterAdmNo || current.groundAdmNo || admShow.value || ""
   ).trim();
-  const studentNameV = toUpper(current.studentName || studentName.value || "");
   const campusId = campusOf(session);
   if (!admNo) {
     toast("Missing ADM number — reload the student from sequence.", true);
@@ -200,37 +199,17 @@ btnSave.onclick = async () => {
   }
   await withBusy(btnSave, async () => {
     try {
-      // Align with saveBio style: admNo + campusId (not document id)
+      // Exact validator: admNo, campusId, photoSerial, remarks?, token — no studentName
       await getClient().mutation("students:savePhoto", {
         token: tokenOf(session),
         admNo,
         campusId,
-        studentName: studentNameV || undefined,
         photoSerial: serial,
         remarks: rem || undefined,
       });
       toast("Photo entry saved");
       await refresh();
     } catch (ex) {
-      // If validator only wants subset, retry minimal args once
-      const msg = String(ex?.message || ex || "");
-      if (msg.includes("extra field") || msg.includes("ArgumentValidation")) {
-        try {
-          await getClient().mutation("students:savePhoto", {
-            token: tokenOf(session),
-            admNo,
-            campusId,
-            photoSerial: serial,
-            remarks: rem || undefined,
-          });
-          toast("Photo entry saved");
-          await refresh();
-          return;
-        } catch (ex2) {
-          toast(ex2.message || String(ex2), true);
-          return;
-        }
-      }
       if (isSessionError(ex)) {
         toast("Session expired — sign in again.", true);
         clearSession();
