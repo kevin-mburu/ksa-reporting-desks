@@ -263,23 +263,59 @@ async function doLookup() {
       seq,
     });
 
-    if (!res || res.error || !(res.admNo || res.letterAdmNo)) {
+    console.log("[KSA lookupBySeq]", res);
+
+    if (!res || res.error || res.ok === false) {
       box.className = "valid-box show bad";
       box.textContent = res?.error || "Not found for this campus sequence.";
       return;
     }
-    lookup = res;
-    document.getElementById("letterAdm").value = res.admNo || res.letterAdmNo || "";
-    document.getElementById("studentName").value = res.studentName || "";
-    document.getElementById("programme").value = res.programme || "";
+
+    // Normalize field names from whatever Convex returns
+    const letterAdm =
+      res.admNo ||
+      res.letterAdmNo ||
+      res.letterAdm ||
+      res.admissionNo ||
+      res.admission_no ||
+      res.adm ||
+      "";
+    const studentName =
+      res.studentName ||
+      res.name ||
+      res.fullName ||
+      res.student_name ||
+      "";
+    const programme =
+      res.programme || res.program || res.course || res.prog || "HP";
+
+    if (!letterAdm && !studentName) {
+      box.className = "valid-box show bad";
+      box.textContent =
+        "Response had no adm/name fields. Keys: " +
+        Object.keys(res).join(", ") +
+        " (see Console [KSA lookupBySeq])";
+      return;
+    }
+
+    lookup = {
+      ...res,
+      admNo: letterAdm,
+      letterAdmNo: letterAdm,
+      studentName,
+      programme,
+    };
+    document.getElementById("letterAdm").value = letterAdm;
+    document.getElementById("studentName").value = studentName;
+    document.getElementById("programme").value = programme;
     box.className = "valid-box show ok";
-    box.textContent = "Valid — " + (res.studentName || res.admNo || "");
+    box.textContent = "Valid — " + (studentName || letterAdm);
 
     try {
       const next = await client.query("students:nextGroundAdm", {
         token,
         campusId,
-        programme: res.programme || "HP",
+        programme: programme || "HP",
       });
       document.getElementById("groundAdmPreview").value =
         (typeof next === "string" ? next : next?.admNo || next?.groundAdmNo) ||
