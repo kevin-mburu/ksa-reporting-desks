@@ -271,35 +271,51 @@ async function doLookup() {
       return;
     }
 
+    // API returns { matches: [ {...}, ... ] } — use first match
+    let row = res;
+    if (Array.isArray(res.matches)) {
+      if (!res.matches.length) {
+        box.className = "valid-box show bad";
+        box.textContent = "Not found for this campus sequence.";
+        return;
+      }
+      row = res.matches[0];
+      console.log("[KSA lookupBySeq first match]", row);
+    } else if (Array.isArray(res.rows) && res.rows.length) {
+      row = res.rows[0];
+    } else if (Array.isArray(res) && res.length) {
+      row = res[0];
+    }
+
     // Normalize field names from whatever Convex returns
     const letterAdm =
-      res.admNo ||
-      res.letterAdmNo ||
-      res.letterAdm ||
-      res.admissionNo ||
-      res.admission_no ||
-      res.adm ||
+      row.admNo ||
+      row.letterAdmNo ||
+      row.letterAdm ||
+      row.admissionNo ||
+      row.admission_no ||
+      row.adm ||
       "";
     const studentName =
-      res.studentName ||
-      res.name ||
-      res.fullName ||
-      res.student_name ||
+      row.studentName ||
+      row.name ||
+      row.fullName ||
+      row.student_name ||
       "";
     const programme =
-      res.programme || res.program || res.course || res.prog || "HP";
+      row.programme || row.program || row.course || row.prog || "HP";
 
     if (!letterAdm && !studentName) {
       box.className = "valid-box show bad";
       box.textContent =
         "Response had no adm/name fields. Keys: " +
-        Object.keys(res).join(", ") +
+        Object.keys(row).join(", ") +
         " (see Console [KSA lookupBySeq])";
       return;
     }
 
     lookup = {
-      ...res,
+      ...row,
       admNo: letterAdm,
       letterAdmNo: letterAdm,
       studentName,
