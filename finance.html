@@ -232,6 +232,19 @@ document.getElementById("payMethod").onchange = togglePay;
 document.getElementById("amountPaid").oninput = updatePay;
 document.getElementById("mpesaAmount").oninput = updatePay;
 document.getElementById("kcbAmount").oninput = updatePay;
+// Student name locked to uppercase while typing
+document.getElementById("studentName").addEventListener("input", (e) => {
+  const el = e.target;
+  const start = el.selectionStart;
+  el.value = el.value.toUpperCase();
+  try { el.setSelectionRange(start, start); } catch (_) {}
+});
+document.getElementById("kcbRef").addEventListener("input", (e) => {
+  e.target.value = e.target.value.toUpperCase();
+});
+document.getElementById("mpesaRef").addEventListener("input", (e) => {
+  e.target.value = e.target.value.toUpperCase();
+});
 
 function getPaidTotal() {
   const m = document.getElementById("payMethod").value;
@@ -365,7 +378,7 @@ async function doLookup() {
       programme,
     };
     document.getElementById("letterAdm").value = letterAdm;
-    document.getElementById("studentName").value = studentName;
+    document.getElementById("studentName").value = (studentName||"").toUpperCase();
     document.getElementById("programme").value = programme;
 
     // Detect already admitted (from issued row or campus register)
@@ -613,13 +626,13 @@ function renderTable() {
         <td style="font-size:11px;color:var(--slate)">${s.financeAt || s.savedAt || "—"}</td>
         <td>
           <button type="button" class="btn btn-gold btn-sm" data-edit="${s._id || s.admNo}">Edit</button>
-          <button type="button" class="btn btn-danger btn-sm" data-del="${s._id || s.admNo}">Del</button>
+          <button type="button" class="btn btn-danger btn-sm" data-del-adm="${(s.admNo || s.letterAdmNo || s.groundAdmNo || "").replace(/"/g, "")}">Del</button>
         </td>
       </tr>`;
     })
     .join("");
 
-  tbody.querySelectorAll("[data-del]").forEach((btn) => {
+  tbody.querySelectorAll("[data-del-adm]").forEach((btn) => {
     btn.onclick = async () => {
       if (
         !confirm(
@@ -627,53 +640,34 @@ function renderTable() {
         )
       )
         return;
-      const id = btn.getAttribute("data-del");
+      const admNo = (btn.getAttribute("data-del-adm") || "").trim();
       const token = tokenOf(session);
       if (!token) {
         toast("No session token — sign in again.", true);
         return;
       }
+      if (!admNo) {
+        toast("Missing admission number for delete.", true);
+        return;
+      }
       await withBusy(btn, async () => {
-        // Only students:removeStudent (do not probe missing functions)
-        const client = getClient();
-        const argSets = [
-          { token, id },
-          { token, studentId: id },
-          { token, _id: id },
-        ];
-        let lastErr = null;
-        let ok = false;
-        for (const args of argSets) {
-          try {
-            await client.mutation("students:removeStudent", args);
-            ok = true;
-            break;
-          } catch (e) {
-            lastErr = e;
-            const m = String(e?.message || e || "");
-            if (
-              m.includes("extra field") ||
-              m.includes("missing the required field") ||
-              m.includes("Validator") ||
-              m.includes("ArgumentValidation")
-            ) {
-              continue;
-            }
-            break;
-          }
-        }
-        if (ok) {
+        try {
+          // Convex: students:removeStudent({ token, admNo })
+          await getClient().mutation("students:removeStudent", {
+            token,
+            admNo,
+          });
           toast("Deleted");
           await refreshList();
-          return;
+        } catch (ex) {
+          if (isSessionError(ex)) {
+            toast("Session expired — sign in again.", true);
+            clearSession();
+            setTimeout(() => location.reload(), 1200);
+            return;
+          }
+          toast(ex.message || String(ex), true);
         }
-        if (isSessionError(lastErr)) {
-          toast("Session expired — sign in again.", true);
-          clearSession();
-          setTimeout(() => location.reload(), 1200);
-          return;
-        }
-        toast(lastErr?.message || String(lastErr) || "Delete failed", true);
       }, "…");
     };
   });
