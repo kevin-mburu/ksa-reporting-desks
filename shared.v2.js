@@ -226,48 +226,42 @@ export async function removeStudentRecord(session, studentOrAdm) {
     }
   }
 
-  const argVariants = (admNo) => {
-    const list = [{ token, admNo }];
-    if (campusId) list.push({ token, admNo, campusId });
-    return list;
-  };
-
+  // Validator is only { token, admNo } — never send campusId
   let lastErr = null;
   let lastResult = null;
   for (const admNo of candidates) {
-    for (const args of argVariants(admNo)) {
-      try {
-        lastResult = await client.mutation("students:removeStudent", args);
-        // Mutation did not throw — verify actually gone
-        const left = await stillPresent(admNo);
-        if (!left) {
-          return {
-            ok: true,
-            usedAdm: admNo,
-            server: lastResult,
-          };
-        }
-        // "Success" but still in DB — keep trying other keys
-        lastErr = new Error(
-          "removeStudent returned without error but student still exists (tried " +
-            admNo +
-            "). Server reply: " +
-            JSON.stringify(lastResult ?? null)
-        );
-      } catch (e) {
-        lastErr = e;
-        const m = String(e?.message || e || "");
-        if (
-          m.includes("extra field") ||
-          m.includes("ArgumentValidation") ||
-          m.includes("not found") ||
-          m.includes("Not found") ||
-          m.includes("no student")
-        ) {
-          continue;
-        }
-        throw e;
+    try {
+      lastResult = await client.mutation("students:removeStudent", {
+        token,
+        admNo,
+      });
+      const left = await stillPresent(admNo);
+      if (!left) {
+        return {
+          ok: true,
+          usedAdm: admNo,
+          server: lastResult,
+        };
       }
+      lastErr = new Error(
+        "removeStudent returned without error but student still exists (tried " +
+          admNo +
+          "). Server reply: " +
+          JSON.stringify(lastResult ?? null)
+      );
+    } catch (e) {
+      lastErr = e;
+      const m = String(e?.message || e || "");
+      if (
+        m.includes("extra field") ||
+        m.includes("ArgumentValidation") ||
+        m.includes("not found") ||
+        m.includes("Not found") ||
+        m.includes("no student")
+      ) {
+        continue;
+      }
+      throw e;
     }
   }
   throw (
