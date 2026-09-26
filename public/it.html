@@ -93,7 +93,7 @@
 </div>
 <div id="toast"></div>
 <script type="module">
-import { login, resumeSession, clearSession, getClient, toast, startClock, fmt, campusOf, tokenOf, withBusy, isSessionError } from "./shared.v2.js";
+import { login, resumeSession, clearSession, getClient, toast, startClock, fmt, campusOf, tokenOf, withBusy, isSessionError, toUpper, toLowerEmail } from "./shared.v2.js";
 let session = null, current = null, list = [];
 
 function showApp(s) {
@@ -159,20 +159,51 @@ async function loadFromFinance() {
   }
 }
 
+function digitsOnly(s) {
+  return String(s ?? "").replace(/\D/g, "");
+}
+// Live: phones = digits only; email lower; other text upper
+phone.addEventListener("input", () => { phone.value = digitsOnly(phone.value); });
+guardianPhone.addEventListener("input", () => { guardianPhone.value = digitsOnly(guardianPhone.value); });
+email.addEventListener("input", () => { email.value = email.value.toLowerCase(); });
+idNumber.addEventListener("input", () => { idNumber.value = idNumber.value.toUpperCase(); });
+guardian.addEventListener("input", () => { guardian.value = guardian.value.toUpperCase(); });
+
 btnSave.onclick = async () => {
   if (!current) { toast("Load a Finance student first", true); return; }
+  const phoneV = digitsOnly(phone.value);
+  const idV = toUpper(idNumber.value);
+  const emailV = toLowerEmail(email.value);
+  const ageV = age.value.trim();
+  const genderV = gender.value;
+  const guardianV = toUpper(guardian.value);
+  const gPhoneV = digitsOnly(guardianPhone.value);
+  if (!phoneV) { toast("Student phone is required (numbers only).", true); phone.focus(); return; }
+  if (phoneV.length < 9) { toast("Student phone must be at least 9 digits.", true); phone.focus(); return; }
+  if (!idV) { toast("ID number is required.", true); idNumber.focus(); return; }
+  if (!emailV || !emailV.includes("@")) { toast("Valid email is required.", true); email.focus(); return; }
+  if (!ageV) { toast("Age is required.", true); age.focus(); return; }
+  if (!genderV) { toast("Gender is required.", true); gender.focus(); return; }
+  if (!guardianV) { toast("Guardian name is required.", true); guardian.focus(); return; }
+  if (!gPhoneV) { toast("Guardian phone is required (numbers only).", true); guardianPhone.focus(); return; }
+  if (gPhoneV.length < 9) { toast("Guardian phone must be at least 9 digits.", true); guardianPhone.focus(); return; }
+  phone.value = phoneV;
+  idNumber.value = idV;
+  email.value = emailV;
+  guardian.value = guardianV;
+  guardianPhone.value = gPhoneV;
   await withBusy(btnSave, async () => {
     try {
       await getClient().mutation("students:saveBio", {
         token: tokenOf(session),
         id: current._id,
-        phone: phone.value.trim(),
-        idNumber: idNumber.value.trim(),
-        email: email.value.trim(),
-        age: age.value,
-        gender: gender.value,
-        guardian: guardian.value.trim(),
-        guardianPhone: guardianPhone.value.trim(),
+        phone: phoneV,
+        idNumber: idV,
+        email: emailV,
+        age: ageV,
+        gender: genderV,
+        guardian: guardianV,
+        guardianPhone: gPhoneV,
       });
       toast("Bio saved");
       await refresh();

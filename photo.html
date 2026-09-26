@@ -85,7 +85,7 @@
 </div>
 <div id="toast"></div>
 <script type="module">
-import { login, resumeSession, clearSession, getClient, toast, startClock, campusOf, tokenOf, withBusy, isSessionError } from "./shared.v2.js";
+import { login, resumeSession, clearSession, getClient, toast, startClock, campusOf, tokenOf, withBusy, isSessionError, toUpper } from "./shared.v2.js";
 let session = null, current = null, list = [];
 function showApp(s) {
   session = s;
@@ -147,14 +147,18 @@ async function loadFromIT() {
 }
 btnSave.onclick = async () => {
   if (!current) { toast("Load a student with IT bio first", true); return; }
-  if (!photoSerial.value.trim()) { toast("Enter photo serial", true); return; }
+  const serial = toUpper(photoSerial.value);
+  const rem = toUpper(remarks.value);
+  if (!serial) { toast("Photo serial is required.", true); photoSerial.focus(); return; }
+  photoSerial.value = serial;
+  remarks.value = rem;
   await withBusy(btnSave, async () => {
     try {
       await getClient().mutation("students:savePhoto", {
         token: tokenOf(session),
         id: current._id,
-        photoSerial: photoSerial.value.trim(),
-        remarks: remarks.value.trim(),
+        photoSerial: serial,
+        remarks: rem || undefined,
       });
       toast("Photo entry saved");
       await refresh();

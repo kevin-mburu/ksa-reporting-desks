@@ -164,7 +164,7 @@
 import {
   login, resumeSession, clearSession, getClient, saveSession,
   toast, startClock, fmt, TOTAL_FEE, campusOf, tokenOf,
-  withBusy, tryMutations, isSessionError
+  withBusy, isSessionError, toUpper, toLowerEmail
 } from "./shared.v2.js";
 
 const FEE = TOTAL_FEE;
@@ -261,6 +261,17 @@ document.getElementById("seqInput").oninput = () => {
   seqTimer = setTimeout(doLookup, 350);
 };
 
+function resetPaymentFields() {
+  document.getElementById("payMethod").value = "NONE";
+  document.getElementById("amountPaid").value = "0";
+  document.getElementById("mpesaAmount").value = "0";
+  document.getElementById("kcbAmount").value = "0";
+  document.getElementById("kcbRef").value = "";
+  document.getElementById("mpesaRef").value = "";
+  togglePay();
+  updatePay();
+}
+
 async function doLookup() {
   const seq = document.getElementById("seqInput").value.trim();
   const box = document.getElementById("validBox");
@@ -269,6 +280,8 @@ async function doLookup() {
   document.getElementById("studentName").value = "";
   document.getElementById("programme").value = "";
   document.getElementById("groundAdmPreview").value = "";
+  // Always clear payment when looking up a new sequence
+  resetPaymentFields();
   if (!seq || !session) {
     box.className = "valid-box";
     return;
@@ -434,11 +447,51 @@ document.getElementById("btnAssign").onclick = async () => {
   }
   const paid = getPaidTotal();
   const payMethod = document.getElementById("payMethod").value;
-  const letterAdm = lookup.admNo || lookup.letterAdmNo || "";
+  const letterAdm = toUpper(lookup.admNo || lookup.letterAdmNo || "");
+  const studentName = toUpper(
+    document.getElementById("studentName").value || lookup.studentName || ""
+  );
+  const programme = toUpper(lookup.programme || document.getElementById("programme").value || "HP");
+  const kcbRef = toUpper(document.getElementById("kcbRef").value);
+  const mpesaRef = toUpper(document.getElementById("mpesaRef").value);
+
   if (!letterAdm) {
     toast("Missing letter ADM from lookup.", true);
     return;
   }
+  if (!studentName) {
+    toast("Student name is required.", true);
+    document.getElementById("studentName").focus();
+    return;
+  }
+  if (payMethod !== "NONE" && paid <= 0) {
+    toast("Enter amount paid for this payment mode.", true);
+    return;
+  }
+  if ((payMethod === "MPESA" || payMethod === "SPLIT") && !mpesaRef) {
+    toast("M-Pesa reference is required.", true);
+    document.getElementById("mpesaRef").focus();
+    return;
+  }
+  if ((payMethod === "KCB" || payMethod === "CHEQUE" || payMethod === "SPLIT") && !kcbRef) {
+    toast("KCB / Cheque reference is required.", true);
+    document.getElementById("kcbRef").focus();
+    return;
+  }
+  if (payMethod === "SPLIT") {
+    const ma = parseFloat(document.getElementById("mpesaAmount").value) || 0;
+    const ka = parseFloat(document.getElementById("kcbAmount").value) || 0;
+    if (ma <= 0 || ka <= 0) {
+      toast("Split requires both M-Pesa and KCB amounts.", true);
+      return;
+    }
+  }
+
+  // Reflect uppercase in the form
+  document.getElementById("studentName").value = studentName;
+  document.getElementById("kcbRef").value = kcbRef;
+  document.getElementById("mpesaRef").value = mpesaRef;
+
   const btn = document.getElementById("btnAssign");
   await withBusy(btn, async () => {
     try {
@@ -447,20 +500,16 @@ document.getElementById("btnAssign").onclick = async () => {
         token,
         admNo: letterAdm,
         letterAdmNo: letterAdm,
-        studentName: (
-          document.getElementById("studentName").value ||
-          lookup.studentName ||
-          ""
-        ).trim(),
+        studentName,
         campusId: campusOf(session),
-        programme: lookup.programme || "HP",
+        programme: programme || "HP",
         payMethod,
         amountPaid: paid,
         fee: FEE,
-        kcbRef: document.getElementById("kcbRef").value.trim() || undefined,
-        mpesaRef: document.getElementById("mpesaRef").value.trim() || undefined,
+        kcbRef: kcbRef || undefined,
+        mpesaRef: mpesaRef || undefined,
       });
-      toast("Assigned — " + (lookup.studentName || letterAdm));
+      toast("Assigned — " + studentName);
       clearForm();
       await refreshList();
     } catch (ex) {
@@ -585,68 +634,46 @@ function renderTable() {
         return;
       }
       await withBusy(btn, async () => {
-        try {
-          // Try common Convex names — backend may use any of these
-          await tryMutations(
-            [
-              "students:delete",
-              "students:remove",
-              "students:deleteStudent",
-              "students:removeStudent",
-              "students:deleteById",
-              "students:softDelete",
-            ],
-            { token, id }
-          );
+        // Only students:removeStudent (do not probe missing functions)
+        const client = getClient();
+        const argSets = [
+          { token, id },
+          { token, studentId: id },
+          { token, _id: id },
+        ];
+        let lastErr = null;
+        let ok = false;
+        for (const args of argSets) {
+          try {
+            await client.mutation("students:removeStudent", args);
+            ok = true;
+            break;
+          } catch (e) {
+            lastErr = e;
+            const m = String(e?.message || e || "");
+            if (
+              m.includes("extra field") ||
+              m.includes("missing the required field") ||
+              m.includes("Validator") ||
+              m.includes("ArgumentValidation")
+            ) {
+              continue;
+            }
+            break;
+          }
+        }
+        if (ok) {
           toast("Deleted");
           await refreshList();
-        } catch (ex) {
-          // Retry with alternate arg shapes if validator differs
-          const msg = String(ex?.message || ex || "");
-          if (
-            msg.includes("Could not find public function") ||
-            msg.includes("extra field") ||
-            msg.includes("missing the required field")
-          ) {
-            try {
-              await tryMutations(
-                [
-                  "students:delete",
-                  "students:remove",
-                  "students:deleteStudent",
-                ],
-                { token, studentId: id }
-              );
-              toast("Deleted");
-              await refreshList();
-              return;
-            } catch (ex2) {
-              try {
-                await tryMutations(["students:delete", "students:remove"], {
-                  token,
-                  _id: id,
-                });
-                toast("Deleted");
-                await refreshList();
-                return;
-              } catch (ex3) {
-                toast(
-                  (ex3.message || String(ex3)) +
-                    " — Add a public mutation students:delete({token,id}) in Convex if missing.",
-                  true
-                );
-                return;
-              }
-            }
-          }
-          if (isSessionError(ex)) {
-            toast("Session expired — sign in again.", true);
-            clearSession();
-            setTimeout(() => location.reload(), 1200);
-            return;
-          }
-          toast(ex.message || String(ex), true);
+          return;
         }
+        if (isSessionError(lastErr)) {
+          toast("Session expired — sign in again.", true);
+          clearSession();
+          setTimeout(() => location.reload(), 1200);
+          return;
+        }
+        toast(lastErr?.message || String(lastErr) || "Delete failed", true);
       }, "…");
     };
   });

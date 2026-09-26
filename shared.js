@@ -211,6 +211,14 @@ export function fmt(n) {
   return Number(n || 0).toLocaleString("en-KE");
 }
 
+/** Uppercase text fields (names, IDs, refs). Email stays lower. */
+export function toUpper(s) {
+  return String(s ?? "").trim().toUpperCase();
+}
+export function toLowerEmail(s) {
+  return String(s ?? "").trim().toLowerCase();
+}
+
 /** True if error looks like expired/invalid session */
 export function isSessionError(err) {
   const m = String(err?.message || err || "").toLowerCase();
