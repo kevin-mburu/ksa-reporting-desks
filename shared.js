@@ -207,18 +207,23 @@ export function toast(msg, isError = false) {
 }
 
 export function startClock(timeId = "live-time", dateId = "live-date") {
+  // Force East Africa Time (UTC+3) — not the browser's local zone
+  const TZ = "Africa/Nairobi";
   const tick = () => {
     const n = new Date();
     const t = document.getElementById(timeId);
     const d = document.getElementById(dateId);
     if (t)
       t.textContent = n.toLocaleTimeString("en-KE", {
+        timeZone: TZ,
         hour: "2-digit",
         minute: "2-digit",
         second: "2-digit",
+        hour12: false,
       });
     if (d)
       d.textContent = n.toLocaleDateString("en-KE", {
+        timeZone: TZ,
         weekday: "short",
         day: "numeric",
         month: "long",

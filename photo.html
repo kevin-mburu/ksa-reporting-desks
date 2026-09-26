@@ -239,7 +239,10 @@ async function refresh() {
     <td>${i+1}</td><td><span class="adm-b">${s.groundAdmNo||s.admNo||"—"}</span></td>
     <td><strong>${s.studentName||"—"}</strong></td><td>${s.photoSerial||"—"}</td>
     <td>${s.remarks||"—"}</td><td style="font-size:11px">${s.photoAt||"—"}</td>
-    <td><button type="button" class="btn btn-gold btn-sm" data-e="${s._id}">Edit</button></td>
+    <td style="white-space:nowrap">
+      <button type="button" class="btn btn-gold btn-sm" data-e="${s._id}">Edit</button>
+      <button type="button" class="btn btn-danger btn-sm" data-del-adm="${(s.admNo||s.letterAdmNo||s.groundAdmNo||"").replace(/"/g,"")}">Del</button>
+    </td>
   </tr>`).join("") : `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">No entries</td></tr>`;
   tableBody.querySelectorAll("[data-e]").forEach(btn => {
     btn.onclick = () => {
@@ -253,6 +256,28 @@ async function refresh() {
       remarks.value = s.remarks || "";
       validBox.className = "valid-box show warn";
       validBox.textContent = "Editing photo entry.";
+    };
+  });
+  tableBody.querySelectorAll("[data-del-adm]").forEach(btn => {
+    btn.onclick = async () => {
+      if (!confirm("Delete this student record? Removes Finance + IT + Photo for that ADM.")) return;
+      const admNo = (btn.getAttribute("data-del-adm") || "").trim();
+      if (!admNo) { toast("Missing ADM", true); return; }
+      await withBusy(btn, async () => {
+        try {
+          await getClient().mutation("students:removeStudent", {
+            token: tokenOf(session),
+            admNo,
+          });
+          toast("Deleted");
+          if (current && (current.admNo === admNo || current.letterAdmNo === admNo || current.groundAdmNo === admNo)) {
+            btnClear.onclick();
+          }
+          await refresh();
+        } catch (ex) {
+          toast(ex.message || String(ex), true);
+        }
+      }, "…");
     };
   });
 }
