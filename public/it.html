@@ -223,11 +223,32 @@ btnSave.onclick = async () => {
   if (gPhoneV.length < 9) { toast("Guardian phone must be at least 9 digits.", true); guardianPhone.focus(); return; }
   phone.value = phoneV; idNumber.value = idV; email.value = emailV;
   guardian.value = guardianV; guardianPhone.value = gPhoneV;
+  const admNo = String(
+    current.admNo || current.letterAdmNo || current.groundAdmNo || admShow.value || ""
+  ).trim();
+  const studentNameV = toUpper(current.studentName || studentName.value || "");
+  const campusId = campusOf(session);
+  if (!admNo) {
+    toast("Missing ADM number — reload the student from sequence.", true);
+    return;
+  }
+  if (!studentNameV) {
+    toast("Student name is required.", true);
+    return;
+  }
+  if (!campusId) {
+    toast("Missing campus — sign in again.", true);
+    return;
+  }
   await withBusy(btnSave, async () => {
     try {
+      // Validator: admNo, campusId, studentName, token (+ optional bio fields)
       await getClient().mutation("students:saveBio", {
         token: tokenOf(session),
-        id: current._id,
+        admNo,
+        campusId,
+        studentName: studentNameV,
+        programme: current.programme || undefined,
         phone: phoneV,
         idNumber: idV,
         email: emailV,
