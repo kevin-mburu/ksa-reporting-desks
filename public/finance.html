@@ -84,8 +84,8 @@
         <div class="valid-box" id="validBox"></div>
       </div>
       <div class="field">
-        <label>Student name</label>
-        <input id="studentName" readonly/>
+        <label>Student name <span style="font-weight:400;color:var(--slate)">(editable)</span></label>
+        <input id="studentName" placeholder="Confirm or correct full name"/>
       </div>
       <div class="field">
         <label>Programme</label>
@@ -106,17 +106,25 @@
           <option value="SPLIT">Split (M-Pesa + KCB)</option>
         </select>
       </div>
-      <div class="field">
+      <div class="field" id="amountPaidWrap">
         <label>Amount paid (KES)</label>
         <input id="amountPaid" type="number" min="0" step="1" value="0"/>
       </div>
-      <div class="field" id="kcbWrap" style="display:none">
-        <label>KCB / Cheque ref</label>
-        <input id="kcbRef"/>
+      <div class="field" id="mpesaAmtWrap" style="display:none">
+        <label>M-Pesa amount (KES)</label>
+        <input id="mpesaAmount" type="number" min="0" step="1" value="0"/>
+      </div>
+      <div class="field" id="kcbAmtWrap" style="display:none">
+        <label>KCB amount (KES)</label>
+        <input id="kcbAmount" type="number" min="0" step="1" value="0"/>
       </div>
       <div class="field" id="mpesaWrap" style="display:none">
         <label>M-Pesa ref</label>
         <input id="mpesaRef"/>
+      </div>
+      <div class="field" id="kcbWrap" style="display:none">
+        <label>KCB / Cheque ref</label>
+        <input id="kcbRef"/>
       </div>
     </div>
     <div class="pay-row">
@@ -208,17 +216,38 @@ document.getElementById("btnLogout").onclick = () => {
 
 function togglePay() {
   const m = document.getElementById("payMethod").value;
+  const isSplit = m === "SPLIT";
   document.getElementById("kcbWrap").style.display =
-    m === "KCB" || m === "CHEQUE" || m === "SPLIT" ? "" : "none";
+    m === "KCB" || m === "CHEQUE" || isSplit ? "" : "none";
   document.getElementById("mpesaWrap").style.display =
-    m === "MPESA" || m === "SPLIT" ? "" : "none";
+    m === "MPESA" || isSplit ? "" : "none";
+  // Split: two amount fields; otherwise single amount paid
+  document.getElementById("amountPaidWrap").style.display = isSplit ? "none" : "";
+  document.getElementById("mpesaAmtWrap").style.display = isSplit ? "" : "none";
+  document.getElementById("kcbAmtWrap").style.display = isSplit ? "" : "none";
   updatePay();
 }
 document.getElementById("payMethod").onchange = togglePay;
 document.getElementById("amountPaid").oninput = updatePay;
+document.getElementById("mpesaAmount").oninput = updatePay;
+document.getElementById("kcbAmount").oninput = updatePay;
+
+function getPaidTotal() {
+  const m = document.getElementById("payMethod").value;
+  if (m === "SPLIT") {
+    const a = parseFloat(document.getElementById("mpesaAmount").value) || 0;
+    const b = parseFloat(document.getElementById("kcbAmount").value) || 0;
+    return a + b;
+  }
+  return parseFloat(document.getElementById("amountPaid").value) || 0;
+}
 
 function updatePay() {
-  const paid = parseFloat(document.getElementById("amountPaid").value) || 0;
+  const paid = getPaidTotal();
+  // Keep single amountPaid in sync when split so other code stays simple
+  if (document.getElementById("payMethod").value === "SPLIT") {
+    document.getElementById("amountPaid").value = String(paid);
+  }
   const bal = Math.max(0, FEE - paid);
   document.getElementById("psPaid").textContent = "KES " + fmt(paid);
   document.getElementById("psBal").textContent = bal > 0 ? "KES " + fmt(bal) : "✓ KES 0";
@@ -355,24 +384,30 @@ document.getElementById("btnAssign").onclick = async () => {
     toast("No session token — sign in again.", true);
     return;
   }
-  const paid = parseFloat(document.getElementById("amountPaid").value) || 0;
+  const paid = getPaidTotal();
   const payMethod = document.getElementById("payMethod").value;
+  const letterAdm = lookup.admNo || lookup.letterAdmNo || "";
+  if (!letterAdm) {
+    toast("Missing letter ADM from lookup.", true);
+    return;
+  }
   try {
     const client = getClient();
+    // Backend requires admNo; letterAdmNo is optional extra
     await client.mutation("students:saveFinance", {
       token,
-      letterAdmNo: lookup.admNo || lookup.letterAdmNo,
-      studentName: lookup.studentName,
+      admNo: letterAdm,
+      letterAdmNo: letterAdm,
+      studentName: (document.getElementById("studentName").value || lookup.studentName || "").trim(),
       campusId: campusOf(session),
       programme: lookup.programme || "HP",
       payMethod,
       amountPaid: paid,
       fee: FEE,
-      kcbRef: document.getElementById("kcbRef").value.trim(),
-      mpesaRef: document.getElementById("mpesaRef").value.trim(),
-      assignNewGround: true,
+      kcbRef: document.getElementById("kcbRef").value.trim() || undefined,
+      mpesaRef: document.getElementById("mpesaRef").value.trim() || undefined,
     });
-    toast("Assigned — " + (lookup.studentName || lookup.admNo || ""));
+    toast("Assigned — " + (lookup.studentName || letterAdm));
     clearForm();
     refreshList();
   } catch (ex) {
@@ -387,6 +422,8 @@ function clearForm() {
   document.getElementById("programme").value = "";
   document.getElementById("groundAdmPreview").value = "";
   document.getElementById("amountPaid").value = "0";
+  document.getElementById("mpesaAmount").value = "0";
+  document.getElementById("kcbAmount").value = "0";
   document.getElementById("payMethod").value = "NONE";
   document.getElementById("kcbRef").value = "";
   document.getElementById("mpesaRef").value = "";
