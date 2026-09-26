@@ -105,32 +105,63 @@ loginForm.onsubmit = async (e) => {
 btnLogout.onclick = () => { clearSession(); location.reload(); };
 let t;
 seqInput.oninput = () => { clearTimeout(t); t = setTimeout(loadFromIT, 350); };
+function seqMatchesLetter(letterAdm, seq) {
+  const want = String(parseInt(String(seq).replace(/\D/g, "") || "0", 10));
+  const letter = String(letterAdm || "");
+  const m = letter.match(/\/(\d{1,4})\//g);
+  if (m) {
+    for (const part of m) {
+      const n = String(parseInt(part.replace(/\D/g, ""), 10));
+      if (n === want) return true;
+    }
+  }
+  for (const p of letter.split("/")) {
+    if (/^\d+$/.test(p) && String(parseInt(p, 10)) === want) return true;
+  }
+  return letter.endsWith("/" + seq) || letter.includes("/" + String(seq).padStart(3, "0") + "/");
+}
 async function loadFromIT() {
   const seq = seqInput.value.trim();
   validBox.className = "valid-box";
   current = null;
+  admShow.value = studentName.value = bioSummary.value = "";
+  photoSerial.value = remarks.value = "";
   if (!seq || !session) return;
+  const token = tokenOf(session);
+  const campusId = campusOf(session);
+  if (!token || !campusId) {
+    validBox.className = "valid-box show bad";
+    validBox.textContent = "Missing token or campus — sign in again.";
+    return;
+  }
   try {
-    const res = await getClient().query("students:getBySeqForCampus", {
-      token: tokenOf(session), campusId: campusOf(session), seq: seq,
-    });
+    // No getBySeqForCampus on backend — list + match sequence
+    const all = (await getClient().query("students:listByCampus", { token, campusId })) || [];
+    const res =
+      all.find(
+        (s) =>
+          seqMatchesLetter(s.letterAdmNo || "", seq) ||
+          seqMatchesLetter(s.admNo || "", seq) ||
+          seqMatchesLetter(s.groundAdmNo || "", seq)
+      ) || null;
     if (!res) {
       validBox.className = "valid-box show bad";
-      validBox.textContent = "Not found on Finance for this campus.";
+      validBox.textContent = "Not found on Finance register for this campus.";
       return;
     }
-    if (!(res.bioCaptured || res.phone || res.idNumber)) {
+    if (!(res.bioCaptured || res.phone || res.idNumber || res.bioAt)) {
       validBox.className = "valid-box show warn";
-      validBox.textContent = "IT bio not saved yet for " + (res.studentName || "this student") + ".";
+      validBox.textContent =
+        "IT bio not saved yet for " + (res.studentName || "this student") + ".";
       current = null;
       return;
     }
     current = res;
-    admShow.value = res.groundAdmNo || res.admNo || "";
-    studentName.value = res.studentName || "";
+    admShow.value = res.groundAdmNo || res.admNo || res.letterAdmNo || "";
+    studentName.value = (res.studentName || "").toUpperCase();
     bioSummary.value = [res.phone, res.idNumber].filter(Boolean).join(" · ") || "—";
-    photoSerial.value = res.photoSerial || "";
-    remarks.value = res.remarks || "";
+    photoSerial.value = (res.photoSerial || "").toUpperCase();
+    remarks.value = (res.remarks || "").toUpperCase();
     if (res.photoSerial) {
       validBox.className = "valid-box show warn";
       validBox.textContent =

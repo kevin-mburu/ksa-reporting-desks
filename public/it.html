@@ -154,30 +154,15 @@ async function loadFromFinance() {
   }
   try {
     const client = getClient();
-    let res = null;
-    // Primary query
-    try {
-      res = await client.query("students:getBySeqForCampus", { token, campusId, seq });
-    } catch (e1) {
-      console.warn("[KSA IT getBySeqForCampus]", e1);
-      try {
-        res = await client.query("students:getBySeqForCampus", {
-          token, campusId, sequence: Number(seq) || seq, seq: Number(seq) || seq,
-        });
-      } catch (e2) {
-        console.warn("[KSA IT getBySeq alt]", e2);
-      }
-    }
-    // Fallback: list campus students and match sequence in letter ADM
-    if (!res) {
-      const all = (await client.query("students:listByCampus", { token, campusId })) || [];
-      res = all.find(s =>
-        seqMatchesLetter(s.letterAdmNo || "", seq) ||
-        seqMatchesLetter(s.admNo || "", seq) ||
-        seqMatchesLetter(s.groundAdmNo || "", seq)
+    // Backend has no getBySeqForCampus — use campus list + sequence match
+    const all = (await client.query("students:listByCampus", { token, campusId })) || [];
+    const res =
+      all.find(
+        (s) =>
+          seqMatchesLetter(s.letterAdmNo || "", seq) ||
+          seqMatchesLetter(s.admNo || "", seq) ||
+          seqMatchesLetter(s.groundAdmNo || "", seq)
       ) || null;
-      if (res) console.log("[KSA IT] matched via listByCampus", res);
-    }
     if (!res) {
       validBox.className = "valid-box show bad";
       validBox.textContent = "Not on Finance register for this campus yet.";
