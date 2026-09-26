@@ -94,7 +94,7 @@
 <div id="toast"></div>
 <script type="module">
 /* BUILD_STAMP: 2026-09-26-savebio-admno-v2 */
-import { login, resumeSession, clearSession, getClient, toast, startClock, fmt, campusOf, tokenOf, withBusy, isSessionError, toUpper, toLowerEmail, assertDeskAccess, roleOf } from "./shared.v2.js";
+import { login, resumeSession, clearSession, getClient, toast, startClock, fmt, campusOf, tokenOf, withBusy, isSessionError, toUpper, toLowerEmail, assertDeskAccess, roleOf, removeStudentRecord } from "./shared.v2.js";
 let session = null, current = null, list = [];
 
 function showApp(s) {
@@ -321,8 +321,8 @@ async function refresh() {
       if (!admNo) { toast("Missing ADM", true); return; }
       await withBusy(btn, async () => {
         try {
-          await getClient().mutation("students:removeStudent", { token: tokenOf(session), admNo });
-          toast("Deleted");
+          const r = await removeStudentRecord(session, list.find(x => (x.admNo||x.letterAdmNo||x.groundAdmNo||"") === admNo) || { admNo });
+          toast("Deleted (" + (r?.usedAdm || admNo) + ")");
           if (current && (current.admNo === admNo || current.letterAdmNo === admNo)) {
             btnClear.onclick();
           }

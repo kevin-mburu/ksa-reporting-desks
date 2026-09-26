@@ -182,6 +182,49 @@ export function assertDeskAccess(session, allowedRoles, deskName) {
   );
 }
 
+/**
+ * Delete student by ADM. Tries letter / ground / admNo variants.
+ * Returns { ok: true, usedAdm } or throws.
+ */
+export async function removeStudentRecord(session, studentOrAdm) {
+  const token = tokenOf(session);
+  if (!token) throw new Error("No session token — sign in again.");
+  const candidates = [];
+  if (typeof studentOrAdm === "string") {
+    candidates.push(studentOrAdm.trim());
+  } else if (studentOrAdm && typeof studentOrAdm === "object") {
+    for (const k of ["admNo", "letterAdmNo", "groundAdmNo"]) {
+      const v = String(studentOrAdm[k] || "").trim();
+      if (v && !candidates.includes(v)) candidates.push(v);
+    }
+  }
+  if (!candidates.length) throw new Error("Missing admission number for delete.");
+
+  const client = getClient();
+  let lastErr = null;
+  for (const admNo of candidates) {
+    try {
+      await client.mutation("students:removeStudent", { token, admNo });
+      return { ok: true, usedAdm: admNo };
+    } catch (e) {
+      lastErr = e;
+      const m = String(e?.message || e || "");
+      // try next ADM variant if this one was not found / wrong key
+      if (
+        m.includes("not found") ||
+        m.includes("Not found") ||
+        m.includes("no student") ||
+        m.includes("ArgumentValidation")
+      ) {
+        continue;
+      }
+      // hard failure (auth etc.)
+      throw e;
+    }
+  }
+  throw lastErr || new Error("Delete failed for all ADM variants: " + candidates.join(", "));
+}
+
 export function campusOf(session) {
   return (
     session?.campusId ||

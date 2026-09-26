@@ -86,7 +86,7 @@
 <div id="toast"></div>
 <script type="module">
 /* BUILD_STAMP: 2026-09-26-photo-save-exact-v1 */
-import { login, resumeSession, clearSession, getClient, toast, startClock, campusOf, tokenOf, withBusy, isSessionError, toUpper , assertDeskAccess} from "./shared.v2.js";
+import { login, resumeSession, clearSession, getClient, toast, startClock, campusOf, tokenOf, withBusy, isSessionError, toUpper , assertDeskAccess, removeStudentRecord } from "./shared.v2.js";
 let session = null, current = null, list = [];
 function showApp(s) {
   assertDeskAccess(s, ['photo', 'photo_desk'], 'Photo Desk');
@@ -262,18 +262,29 @@ async function refresh() {
     btn.onclick = async () => {
       if (!confirm("Delete this student record? Removes Finance + IT + Photo for that ADM.")) return;
       const admNo = (btn.getAttribute("data-del-adm") || "").trim();
-      if (!admNo) { toast("Missing ADM", true); return; }
+      const row = list.find(x =>
+        (x.admNo || x.letterAdmNo || x.groundAdmNo || "") === admNo ||
+        String(x._id) === btn.closest("tr")?.querySelector("[data-e]")?.getAttribute("data-e")
+      ) || { admNo, letterAdmNo: admNo, groundAdmNo: admNo };
       await withBusy(btn, async () => {
         try {
-          await getClient().mutation("students:removeStudent", {
-            token: tokenOf(session),
-            admNo,
-          });
-          toast("Deleted");
-          if (current && (current.admNo === admNo || current.letterAdmNo === admNo || current.groundAdmNo === admNo)) {
+          const r = await removeStudentRecord(session, row);
+          toast("Deleted (" + r.usedAdm + ")");
+          if (current && (
+            current.admNo === r.usedAdm || current.letterAdmNo === r.usedAdm ||
+            current.groundAdmNo === r.usedAdm || current.admNo === admNo
+          )) {
             btnClear.onclick();
           }
           await refresh();
+          // Verify gone
+          const still = list.find(s =>
+            s.admNo === r.usedAdm || s.letterAdmNo === r.usedAdm || s.groundAdmNo === r.usedAdm ||
+            s.admNo === admNo || s.letterAdmNo === admNo
+          );
+          if (still) {
+            toast("Server said deleted but student still in list — check Convex removeStudent uses the same admNo field.", true);
+          }
         } catch (ex) {
           toast(ex.message || String(ex), true);
         }

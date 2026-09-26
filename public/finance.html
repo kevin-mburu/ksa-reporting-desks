@@ -165,7 +165,7 @@ import {
   login, resumeSession, clearSession, getClient, saveSession,
   toast, startClock, fmt, TOTAL_FEE, campusOf, tokenOf,
   withBusy, isSessionError, toUpper, toLowerEmail
-, assertDeskAccess} from "./shared.v2.js";
+, assertDeskAccess, removeStudentRecord } from "./shared.v2.js";
 
 const FEE = TOTAL_FEE;
 let session = null;
@@ -654,11 +654,9 @@ function renderTable() {
       await withBusy(btn, async () => {
         try {
           // Convex: students:removeStudent({ token, admNo })
-          await getClient().mutation("students:removeStudent", {
-            token,
-            admNo,
-          });
-          toast("Deleted");
+          const r = await removeStudentRecord(session, { admNo, letterAdmNo: admNo, groundAdmNo: admNo });
+          // r.usedAdm
+          toast("Deleted (" + (r.usedAdm || admNo) + ")");
           await refreshList();
         } catch (ex) {
           if (isSessionError(ex)) {
