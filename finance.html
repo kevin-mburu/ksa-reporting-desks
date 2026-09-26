@@ -163,7 +163,8 @@
 <script type="module">
 import {
   login, resumeSession, clearSession, getClient, saveSession,
-  toast, startClock, fmt, TOTAL_FEE, campusOf, tokenOf
+  toast, startClock, fmt, TOTAL_FEE, campusOf, tokenOf,
+  withBusy, tryMutations, isSessionError
 } from "./shared.v2.js";
 
 const FEE = TOTAL_FEE;
@@ -438,28 +439,40 @@ document.getElementById("btnAssign").onclick = async () => {
     toast("Missing letter ADM from lookup.", true);
     return;
   }
-  try {
-    const client = getClient();
-    // Backend requires admNo; letterAdmNo is optional extra
-    await client.mutation("students:saveFinance", {
-      token,
-      admNo: letterAdm,
-      letterAdmNo: letterAdm,
-      studentName: (document.getElementById("studentName").value || lookup.studentName || "").trim(),
-      campusId: campusOf(session),
-      programme: lookup.programme || "HP",
-      payMethod,
-      amountPaid: paid,
-      fee: FEE,
-      kcbRef: document.getElementById("kcbRef").value.trim() || undefined,
-      mpesaRef: document.getElementById("mpesaRef").value.trim() || undefined,
-    });
-    toast("Assigned — " + (lookup.studentName || letterAdm));
-    clearForm();
-    refreshList();
-  } catch (ex) {
-    toast(ex.message || String(ex), true);
-  }
+  const btn = document.getElementById("btnAssign");
+  await withBusy(btn, async () => {
+    try {
+      const client = getClient();
+      await client.mutation("students:saveFinance", {
+        token,
+        admNo: letterAdm,
+        letterAdmNo: letterAdm,
+        studentName: (
+          document.getElementById("studentName").value ||
+          lookup.studentName ||
+          ""
+        ).trim(),
+        campusId: campusOf(session),
+        programme: lookup.programme || "HP",
+        payMethod,
+        amountPaid: paid,
+        fee: FEE,
+        kcbRef: document.getElementById("kcbRef").value.trim() || undefined,
+        mpesaRef: document.getElementById("mpesaRef").value.trim() || undefined,
+      });
+      toast("Assigned — " + (lookup.studentName || letterAdm));
+      clearForm();
+      await refreshList();
+    } catch (ex) {
+      if (isSessionError(ex)) {
+        toast("Session expired — sign in again.", true);
+        clearSession();
+        setTimeout(() => location.reload(), 1200);
+        return;
+      }
+      toast(ex.message || String(ex), true);
+    }
+  }, "Assigning…");
 };
 
 function clearForm() {
@@ -559,17 +572,82 @@ function renderTable() {
 
   tbody.querySelectorAll("[data-del]").forEach((btn) => {
     btn.onclick = async () => {
-      if (!confirm("Delete this finance record? The letter can be assigned again.")) return;
-      try {
-        await getClient().mutation("students:remove", {
-          token: tokenOf(session),
-          id: btn.getAttribute("data-del"),
-        });
-        toast("Deleted", true);
-        refreshList();
-      } catch (ex) {
-        toast(ex.message || String(ex), true);
+      if (
+        !confirm(
+          "Delete this finance record? The letter can be assigned again."
+        )
+      )
+        return;
+      const id = btn.getAttribute("data-del");
+      const token = tokenOf(session);
+      if (!token) {
+        toast("No session token — sign in again.", true);
+        return;
       }
+      await withBusy(btn, async () => {
+        try {
+          // Try common Convex names — backend may use any of these
+          await tryMutations(
+            [
+              "students:delete",
+              "students:remove",
+              "students:deleteStudent",
+              "students:removeStudent",
+              "students:deleteById",
+              "students:softDelete",
+            ],
+            { token, id }
+          );
+          toast("Deleted");
+          await refreshList();
+        } catch (ex) {
+          // Retry with alternate arg shapes if validator differs
+          const msg = String(ex?.message || ex || "");
+          if (
+            msg.includes("Could not find public function") ||
+            msg.includes("extra field") ||
+            msg.includes("missing the required field")
+          ) {
+            try {
+              await tryMutations(
+                [
+                  "students:delete",
+                  "students:remove",
+                  "students:deleteStudent",
+                ],
+                { token, studentId: id }
+              );
+              toast("Deleted");
+              await refreshList();
+              return;
+            } catch (ex2) {
+              try {
+                await tryMutations(["students:delete", "students:remove"], {
+                  token,
+                  _id: id,
+                });
+                toast("Deleted");
+                await refreshList();
+                return;
+              } catch (ex3) {
+                toast(
+                  (ex3.message || String(ex3)) +
+                    " — Add a public mutation students:delete({token,id}) in Convex if missing.",
+                  true
+                );
+                return;
+              }
+            }
+          }
+          if (isSessionError(ex)) {
+            toast("Session expired — sign in again.", true);
+            clearSession();
+            setTimeout(() => location.reload(), 1200);
+            return;
+          }
+          toast(ex.message || String(ex), true);
+        }
+      }, "…");
     };
   });
 

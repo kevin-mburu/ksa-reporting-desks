@@ -93,7 +93,7 @@
 </div>
 <div id="toast"></div>
 <script type="module">
-import { login, resumeSession, clearSession, getClient, toast, startClock, fmt, campusOf, tokenOf } from "./shared.v2.js";
+import { login, resumeSession, clearSession, getClient, toast, startClock, fmt, campusOf, tokenOf, withBusy, isSessionError } from "./shared.v2.js";
 let session = null, current = null, list = [];
 
 function showApp(s) {
@@ -161,21 +161,31 @@ async function loadFromFinance() {
 
 btnSave.onclick = async () => {
   if (!current) { toast("Load a Finance student first", true); return; }
-  try {
-    await getClient().mutation("students:saveBio", {
-      token: tokenOf(session),
-      id: current._id,
-      phone: phone.value.trim(),
-      idNumber: idNumber.value.trim(),
-      email: email.value.trim(),
-      age: age.value,
-      gender: gender.value,
-      guardian: guardian.value.trim(),
-      guardianPhone: guardianPhone.value.trim(),
-    });
-    toast("Bio saved");
-    refresh();
-  } catch (ex) { toast(ex.message || String(ex), true); }
+  await withBusy(btnSave, async () => {
+    try {
+      await getClient().mutation("students:saveBio", {
+        token: tokenOf(session),
+        id: current._id,
+        phone: phone.value.trim(),
+        idNumber: idNumber.value.trim(),
+        email: email.value.trim(),
+        age: age.value,
+        gender: gender.value,
+        guardian: guardian.value.trim(),
+        guardianPhone: guardianPhone.value.trim(),
+      });
+      toast("Bio saved");
+      await refresh();
+    } catch (ex) {
+      if (isSessionError(ex)) {
+        toast("Session expired — sign in again.", true);
+        clearSession();
+        setTimeout(() => location.reload(), 1200);
+        return;
+      }
+      toast(ex.message || String(ex), true);
+    }
+  }, "Saving…");
 };
 btnClear.onclick = () => { seqInput.value = ""; current = null; validBox.className = "valid-box"; ["admShow","studentName","paySummary","phone","idNumber","email","age","guardian","guardianPhone"].forEach(id => document.getElementById(id).value = ""); gender.value = ""; };
 

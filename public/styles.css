@@ -93,3 +93,4 @@ tbody td{padding:10px 12px;vertical-align:middle}
 #loginGate .pansckev-text{color:rgba(255,255,255,.7)}
 #loginGate .pansckev-text strong{color:#7dcea0}
 #loginGate .pansckev-logo{filter:brightness(1.15)}
+button:disabled,.btn:disabled{opacity:.55;cursor:not-allowed;pointer-events:none}

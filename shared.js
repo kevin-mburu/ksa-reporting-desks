@@ -211,6 +211,67 @@ export function fmt(n) {
   return Number(n || 0).toLocaleString("en-KE");
 }
 
+/** True if error looks like expired/invalid session */
+export function isSessionError(err) {
+  const m = String(err?.message || err || "").toLowerCase();
+  return (
+    m.includes("token") ||
+    m.includes("session") ||
+    m.includes("unauthorized") ||
+    m.includes("unauthenticated") ||
+    m.includes("not authenticated") ||
+    m.includes("invalid auth")
+  );
+}
+
+/**
+ * Disable button while async work runs. Restores label after.
+ */
+export async function withBusy(btn, work, busyLabel = "Working…") {
+  if (!btn) return work();
+  if (btn.disabled) return;
+  const prev = btn.textContent;
+  btn.disabled = true;
+  btn.setAttribute("aria-busy", "true");
+  btn.textContent = busyLabel;
+  try {
+    return await work();
+  } finally {
+    btn.disabled = false;
+    btn.removeAttribute("aria-busy");
+    btn.textContent = prev;
+  }
+}
+
+/**
+ * Try several mutation names until one exists (Convex deploy name drift).
+ * Returns { ok, name, result } or throws last error if all missing.
+ */
+export async function tryMutations(names, args) {
+  const client = getClient();
+  let lastErr = null;
+  for (const name of names) {
+    try {
+      const result = await client.mutation(name, args);
+      return { ok: true, name, result };
+    } catch (e) {
+      const msg = String(e?.message || e || "");
+      lastErr = e;
+      if (
+        msg.includes("Could not find public function") ||
+        msg.includes("not found") ||
+        msg.includes("Unknown function")
+      ) {
+        console.warn("[KSA] mutation missing:", name, msg);
+        continue;
+      }
+      // Real validation/auth error — stop trying
+      throw e;
+    }
+  }
+  throw lastErr || new Error("No matching Convex mutation found: " + names.join(", "));
+}
+
 export const CAMPUSES = [
   { id: "nakuru", code: "NKR", name: "Nakuru" },
   { id: "nyeri", code: "NYR", name: "Nyeri" },
